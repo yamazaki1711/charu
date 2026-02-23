@@ -1,3 +1,5 @@
+import 'package:sqflite/sqflite.dart';
+
 import '../../domain/model/dictionary_models.dart';
 import '../../domain/repository/dictionary_repository.dart';
 import '../local/database_helper.dart';
@@ -89,6 +91,20 @@ class DictionaryRepositoryImpl implements IDictionaryRepository {
       source: 'fallback',
       icon: '❓',
     );
+  }
+
+  @override
+  Future<void> saveWord(DictionaryResult result) async {
+    final db = await _dbHelper.database;
+    // Assuming the table 'user_vocabulary' exists based on the concept spec.
+    // Ensure we don't save duplicates easily, or just insert it.
+    await db.insert('user_vocabulary', {
+      'word': result.chineseWord,
+      'pinyin': result.pinyin,
+      'translation': result.translation,
+      'source_type': result.source,
+      'saved_date': DateTime.now().toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   @override

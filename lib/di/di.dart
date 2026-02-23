@@ -4,6 +4,7 @@ import '../data/local/database_helper.dart';
 import '../data/repository/dictionary_repository_impl.dart';
 import '../domain/repository/dictionary_repository.dart';
 import '../domain/usecase/lookup_word_usecase.dart';
+import '../domain/usecase/save_word_usecase.dart';
 
 /// Database Helper provider (singleton).
 final databaseHelperProvider = Provider<DatabaseHelper>((ref) {
@@ -22,4 +23,10 @@ final dictionaryRepositoryProvider = Provider<IDictionaryRepository>((ref) {
 final lookupWordUseCaseProvider = Provider<LookupWordUseCase>((ref) {
   final repo = ref.watch(dictionaryRepositoryProvider);
   return LookupWordUseCase(repo);
+});
+
+/// UseCase provider for saving words to vocabulary.
+final saveWordUseCaseProvider = Provider<SaveWordUseCase>((ref) {
+  final repo = ref.watch(dictionaryRepositoryProvider);
+  return SaveWordUseCase(repo);
 });

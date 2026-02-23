@@ -10,6 +10,9 @@ abstract class IDictionaryRepository {
   /// 5. Pinyin Character Fallback.
   Future<DictionaryResult> lookupWord(String word);
 
+  /// Saves a word to the user's personal vocabulary.
+  Future<void> saveWord(DictionaryResult result);
+
   // --- Individual table access for cascade internals ---
 
   /// Search Local BKRS. Returns null if not found.

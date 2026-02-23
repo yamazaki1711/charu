@@ -24,8 +24,9 @@ dependencies:
   # Network
   dio: ^5.8.0+1
 
-  # HTML Parsing
+  # HTML Parsing & NLP
   html: ^0.15.5
+  jieba_flutter: ^0.2.0
 
   # File Handling
   file_picker: ^8.3.7
