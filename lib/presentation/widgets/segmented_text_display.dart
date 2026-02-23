@@ -1,9 +1,9 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:jieba_flutter/jieba_flutter.dart';
+import 'package:jieba_flutter/analysis/jieba_segmenter.dart';
 
 import 'dictionary_popup.dart';
-import '../../domain/usecase/lookup_word_usecase.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../di/di.dart';
 
@@ -40,15 +40,17 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
 
   Future<void> _segmentText() async {
     if (!_isInit) {
-      await JiebaFlutter.init();
+      await JiebaSegmenter.init();
       _isInit = true;
     }
     
     // Segment logic
-    final segments = JiebaFlutter.cut(widget.text);
+    final segmenter = JiebaSegmenter();
+    final tokens = segmenter.process(widget.text, SegMode.SEARCH);
+    
     if (mounted) {
       setState(() {
-        _segments = segments;
+        _segments = tokens.map((t) => t.word).toList();
       });
     }
   }
