@@ -5,7 +5,9 @@ import '../data/repository/dictionary_repository_impl.dart';
 import '../domain/repository/dictionary_repository.dart';
 import '../domain/usecase/lookup_word_usecase.dart';
 import '../domain/usecase/save_word_usecase.dart';
-
+import '../domain/repository/news_repository.dart';
+import '../data/repository/news_repository_impl.dart';
+import '../domain/usecase/news_usecases.dart';
 /// Database Helper provider (singleton).
 final databaseHelperProvider = Provider<DatabaseHelper>((ref) {
   return DatabaseHelper.instance;
@@ -29,4 +31,20 @@ final lookupWordUseCaseProvider = Provider<LookupWordUseCase>((ref) {
 final saveWordUseCaseProvider = Provider<SaveWordUseCase>((ref) {
   final repo = ref.watch(dictionaryRepositoryProvider);
   return SaveWordUseCase(repo);
+});
+
+// -----------------------------------------------------------------------------
+// NEWS MODULE
+// -----------------------------------------------------------------------------
+
+final newsRepositoryProvider = Provider<INewsRepository>((ref) {
+  return NewsRepositoryImpl();
+});
+
+final getLatestNewsUseCaseProvider = Provider<GetLatestNewsUseCase>((ref) {
+  return GetLatestNewsUseCase(ref.watch(newsRepositoryProvider));
+});
+
+final fetchArticleContentUseCaseProvider = Provider<FetchArticleContentUseCase>((ref) {
+  return FetchArticleContentUseCase(ref.watch(newsRepositoryProvider));
 });
