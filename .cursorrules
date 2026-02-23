@@ -1,0 +1,34 @@
+You are developing the CHARU app (Version 4.0), a Chinese text reader with an integrated dictionary.
+
+### General Roles
+- As an Antigravity agent, you will assist the developer in writing code, handling MCPs (like Stitch MCP and Flutter MCP), and planning architecture.
+
+### Tech Stack
+- Framework: Flutter (Dart)
+- Architecture: MVVM + Clean Architecture
+- Database: SQLite (drift or sqflite)
+- Network: dio / http
+- State Management: Riverpod / Bloc
+- Text Parsing: html package
+- Segmentation: Jieba (via C++ FFI or Dart port)
+
+### Structure & Architecture Requirements
+- Follow strict directory structure: `lib/data`, `lib/domain`, `lib/presentation`, `lib/di`.
+- Always separate UI (presentation layer) from Business Logic (domain layer) and Storage/Network (data layer).
+- Use strict typing in Dart. Do not use `dynamic` unless interacting with unknown JSON structures.
+
+### UI Principles (Liquid Glass)
+- Prioritize CJK (Chinese, Japanese, Korean) text readability over stylization.
+- Provide solid, opaque backgrounds for any text areas containing Chinese characters.
+- Apply blur effects (Liquid Glass) ONLY to decorative and navigation elements (Bottom Nav, dialog backgrounds, app bars).
+- Dark theme uses `#1A1D23` background, `#E8E8E8` text, `#FF8585` accent.
+- Light theme uses `#F8F9FA` background, `#1A1A1A` text, `#FF6B6B` accent.
+
+### Dictionary & Logic Rules
+- ALL dictionary lookups must follow a strict 5-layer cascade: 
+   1. Local BKRS (~250k) 
+   2. Toponyms 
+   3. Person Names 
+   4. Online bkrs.info 
+   5. Pinyin Character Fallback.
+- Use Jieba for Chinese text segmentation before any rendering.
