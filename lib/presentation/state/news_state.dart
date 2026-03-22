@@ -3,33 +3,38 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/model/news_models.dart';
 import '../../di/di.dart';
 
-/// Notifier to hold the state of the News Feed
-class NewsFeedNotifier extends StateNotifier<AsyncValue<List<NewsArticle>>> {
-  NewsFeedNotifier(this.ref) : super(const AsyncValue.loading()) {
-    refresh();
+/// Notifier that holds the state of the News Feed.
+///
+/// Uses [AsyncNotifier] (Riverpod 2.x) instead of the deprecated
+/// [StateNotifier<AsyncValue<T>>] pattern.
+class NewsFeedNotifier extends AsyncNotifier<List<NewsArticle>> {
+  @override
+  Future<List<NewsArticle>> build() async {
+    return _fetch();
   }
 
-  final Ref ref;
+  Future<List<NewsArticle>> _fetch() {
+    final useCase = ref.read(getLatestNewsUseCaseProvider);
+    return useCase.call();
+  }
 
   Future<void> refresh() async {
     state = const AsyncValue.loading();
-    try {
-      final useCase = ref.read(getLatestNewsUseCaseProvider);
-      final news = await useCase.call();
-      state = AsyncValue.data(news);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-    }
+    state = await AsyncValue.guard(_fetch);
   }
 }
 
-/// Provider for the list of News Articles
-final newsFeedProvider = StateNotifierProvider<NewsFeedNotifier, AsyncValue<List<NewsArticle>>>((ref) {
-  return NewsFeedNotifier(ref);
-});
+/// Provider for the list of News Articles.
+final newsFeedProvider =
+    AsyncNotifierProvider<NewsFeedNotifier, List<NewsArticle>>(
+      NewsFeedNotifier.new,
+    );
 
-/// FutureProvider for a specific article's content
-final articleContentProvider = FutureProvider.family<NewsArticle, String>((ref, url) async {
+/// FutureProvider for a specific article's full content.
+final articleContentProvider = FutureProvider.family<NewsArticle, String>((
+  ref,
+  articleId,
+) async {
   final useCase = ref.read(fetchArticleContentUseCaseProvider);
-  return await useCase.call(url);
+  return useCase.call(articleId);
 });

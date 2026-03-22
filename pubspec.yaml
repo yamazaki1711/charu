@@ -10,42 +10,37 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Architecture & State Management
+  # State Management
   flutter_riverpod: ^2.6.1
-  riverpod_annotation: ^2.6.1
 
   # Navigation
   go_router: ^14.8.1
 
-  # Database (SQLite)
+  # Database
   sqflite: ^2.4.2
   path: ^1.9.1
 
   # Network
   dio: ^5.8.0+1
 
-  # HTML Parsing & NLP
+  # HTML Parsing
   html: ^0.15.5
+  xml: ^6.5.0
+
+  # Chinese Segmentation
   jieba_flutter: ^0.2.0
 
   # File Handling
   file_picker: ^8.3.7
-  flutter_charset_detector: ^5.0.0
 
-  # UI Utilities
-  flutter_svg: ^2.0.17
-  cached_network_image: ^3.4.1
-  shimmer: ^3.0.0
-
-  # Local Storage (settings)
+  # Settings Storage
   shared_preferences: ^2.5.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-  riverpod_generator: ^2.6.5
-  build_runner: ^2.4.15
+  sqlite3: ^2.4.6
 
 flutter:
   uses-material-design: true
@@ -54,3 +49,6 @@ flutter:
     - assets/
     - assets/db/
     - assets/icons/
+    - assets/dict.txt
+    - assets/prob_emit.txt
+    - assets/dict.big.txt

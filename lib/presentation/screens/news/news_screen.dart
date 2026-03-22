@@ -19,9 +19,7 @@ class NewsScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () {
-              ref.read(newsFeedProvider.notifier).refresh();
-            },
+            onPressed: () => ref.read(newsFeedProvider.notifier).refresh(),
           ),
         ],
       ),
@@ -31,7 +29,7 @@ class NewsScreen extends ConsumerWidget {
             return const Center(child: Text('Нет новостей 🙅‍♂️'));
           }
           return RefreshIndicator(
-            onRefresh: () async => ref.read(newsFeedProvider.notifier).refresh(),
+            onRefresh: ref.read(newsFeedProvider.notifier).refresh,
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: articles.length,
@@ -86,7 +84,9 @@ class NewsScreen extends ConsumerWidget {
                           article.summary,
                           style: TextStyle(
                             fontSize: 16,
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.7,
+                            ),
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -107,7 +107,9 @@ class NewsScreen extends ConsumerWidget {
                               '${article.publishedAt.hour}:${article.publishedAt.minute.toString().padLeft(2, '0')}',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.5,
+                                ),
                               ),
                             ),
                           ],

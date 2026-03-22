@@ -10,10 +10,30 @@ class AppShell extends StatelessWidget {
   final Widget child;
 
   static const _tabs = [
-    (icon: Icons.article_outlined, activeIcon: Icons.article, label: 'Новости', path: '/news'),
-    (icon: Icons.folder_outlined, activeIcon: Icons.folder, label: 'Файлы', path: '/files'),
-    (icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart, label: 'Прогресс', path: '/progress'),
-    (icon: Icons.settings_outlined, activeIcon: Icons.settings, label: 'Настройки', path: '/settings'),
+    (
+      icon: Icons.article_outlined,
+      activeIcon: Icons.article,
+      label: 'Новости',
+      path: '/news',
+    ),
+    (
+      icon: Icons.folder_outlined,
+      activeIcon: Icons.folder,
+      label: 'Файлы',
+      path: '/files',
+    ),
+    (
+      icon: Icons.bar_chart_outlined,
+      activeIcon: Icons.bar_chart,
+      label: 'Прогресс',
+      path: '/progress',
+    ),
+    (
+      icon: Icons.settings_outlined,
+      activeIcon: Icons.settings,
+      label: 'Настройки',
+      path: '/settings',
+    ),
   ];
 
   int _currentIndex(BuildContext context) {
@@ -34,11 +54,13 @@ class AppShell extends StatelessWidget {
         selectedIndex: index,
         onDestinationSelected: (i) => context.go(_tabs[i].path),
         destinations: _tabs
-            .map((t) => NavigationDestination(
-                  icon: Icon(t.icon),
-                  selectedIcon: Icon(t.activeIcon),
-                  label: t.label,
-                ))
+            .map(
+              (t) => NavigationDestination(
+                icon: Icon(t.icon),
+                selectedIcon: Icon(t.activeIcon),
+                label: t.label,
+              ),
+            )
             .toList(),
       ),
     );

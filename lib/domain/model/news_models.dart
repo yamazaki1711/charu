@@ -6,10 +6,10 @@ class NewsArticle {
   final DateTime publishedAt;
   final String summary;
   final String? url;
-  
+
   /// Full HTML or segmented text body for reading.
   final String? fullContent;
-  
+
   /// Thumbnail URL if the article has an image
   final String? thumbnailUrl;
 

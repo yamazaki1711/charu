@@ -7,10 +7,7 @@ import '../../widgets/segmented_text_display.dart';
 class ArticleScreen extends ConsumerWidget {
   final String articleId;
 
-  const ArticleScreen({
-    super.key,
-    required this.articleId,
-  });
+  const ArticleScreen({super.key, required this.articleId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -18,10 +15,7 @@ class ArticleScreen extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Чтение текста'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Чтение текста'), centerTitle: true),
       body: articleState.when(
         data: (article) {
           return SingleChildScrollView(
@@ -39,7 +33,11 @@ class ArticleScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Icon(Icons.source, size: 16, color: theme.colorScheme.primary),
+                    Icon(
+                      Icons.source,
+                      size: 16,
+                      color: theme.colorScheme.primary,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       article.source,
@@ -51,7 +49,7 @@ class ArticleScreen extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 32),
-                
+
                 // The Magic Chinese Segmented Render:
                 SegmentedTextDisplay(
                   text: article.fullContent ?? 'Тело статьи не загрузилось.',
@@ -61,9 +59,8 @@ class ArticleScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(
-          child: Text('Ошибка загрузки текста:\n$err'),
-        ),
+        error: (err, stack) =>
+            Center(child: Text('Ошибка загрузки текста:\n$err')),
       ),
     );
   }

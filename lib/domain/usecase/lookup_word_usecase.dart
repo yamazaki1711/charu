@@ -11,7 +11,7 @@ class LookupWordUseCase {
   LookupWordUseCase(this._repository);
 
   /// Executes the 5-layer dictionary lookup cascade.
-  /// 
+  ///
   /// The [word] input should be properly segmented by Jieba prior to calling this.
   Future<DictionaryResult> call(String word) async {
     if (word.trim().isEmpty) {
