@@ -46,3 +46,8 @@ app.*.map.json
 
 # Windows reserved names
 nul
+
+# Large database files (download separately)
+dabkrs
+dabkrs.gz
+assets/db/*.db
