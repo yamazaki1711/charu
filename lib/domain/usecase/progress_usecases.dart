@@ -100,3 +100,14 @@ class AddReadingMinutesUseCase {
     await _repository.addReadingMinutes(minutes);
   }
 }
+
+/// Use case for wiping all vocabulary/stats/streak data (Settings screen).
+class ResetProgressUseCase {
+  final IProgressRepository _repository;
+
+  ResetProgressUseCase(this._repository);
+
+  Future<void> call() async {
+    await _repository.resetProgress();
+  }
+}

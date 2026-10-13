@@ -22,4 +22,7 @@ abstract class IFileRepository {
 
   /// Get file info by path
   Future<LocalFile?> getFileByPath(String path);
+
+  /// Save a bookmark at [position] (character offset) in [filePath].
+  Future<void> addBookmark(String filePath, int position, {String? note});
 }

@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 
 import '../screens/news/news_screen.dart';
+import '../screens/news/article_screen.dart';
 import '../screens/files/files_screen.dart';
 import '../screens/files/reader_screen.dart';
 import '../screens/progress/progress_screen.dart';
@@ -21,6 +22,17 @@ final GoRouter appRouter = GoRouter(
           path: '/news',
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: NewsScreen()),
+          routes: [
+            GoRoute(
+              path: 'article',
+              pageBuilder: (context, state) {
+                final articleId = state.extra as String? ?? '';
+                return NoTransitionPage(
+                  child: ArticleScreen(articleId: articleId),
+                );
+              },
+            ),
+          ],
         ),
         GoRoute(
           path: '/files',

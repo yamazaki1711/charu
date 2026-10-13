@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
+import '../../core/log.dart';
 import 'package:xml/xml.dart' as xml;
 
 import '../../domain/model/news_models.dart';
@@ -34,14 +34,14 @@ class NewsApiService {
   Future<List<NewsArticle>> fetchLatestNews() async {
     // Все RSS-источники параллельно; статьи объединяются и сортируются
     // по дате (свежие сверху). Упавший источник не блокирует остальные.
-    debugPrint('[News] Fetching ${_rssSources.length} sources in parallel');
+    log('[News] Fetching ${_rssSources.length} sources in parallel');
     final results = await Future.wait(
       _rssSources.map(
         (source) async {
           try {
             return await _fetchRss(source['url']!, source['name']!);
           } catch (e) {
-            debugPrint('[News] Error ${source['name']}: $e');
+            log('[News] Error ${source['name']}: $e');
             return <NewsArticle>[];
           }
         },
@@ -50,7 +50,7 @@ class NewsApiService {
     final merged = results.expand((list) => list).toList()
       ..sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
     if (merged.isNotEmpty) {
-      debugPrint('[News] Success: ${merged.length} articles total');
+      log('[News] Success: ${merged.length} articles total');
       return merged;
     }
 
@@ -62,7 +62,7 @@ class NewsApiService {
           return articles;
         }
       } catch (e) {
-        debugPrint('[News] HTML Error: $e');
+        log('[News] HTML Error: $e');
       }
     }
 
@@ -101,7 +101,7 @@ class NewsApiService {
           final articles = _parseRssXml(response.data.toString(), sourceName);
           if (articles.isNotEmpty) {
             if (proxy.isNotEmpty) {
-              debugPrint('[News] $sourceName: fetched via proxy');
+              log('[News] $sourceName: fetched via proxy');
             }
             lastSourceErrors.remove(sourceName);
             return articles;
@@ -109,7 +109,7 @@ class NewsApiService {
         }
       } catch (e) {
         lastSourceErrors[sourceName] = e.toString();
-        debugPrint(
+        log(
             '[News] RSS $sourceName via ${proxy.isEmpty ? 'direct' : 'proxy'}: $e');
       }
     }
@@ -123,7 +123,7 @@ class NewsApiService {
       final document = xml.XmlDocument.parse(xmlString);
       final items = document.findAllElements('item');
 
-      debugPrint('[News] Found ${items.length} items');
+      log('[News] Found ${items.length} items');
 
       for (final item in items) {
         final title = item.findElements('title').firstOrNull?.innerText.trim() ?? '';
@@ -131,7 +131,7 @@ class NewsApiService {
         final description = item.findElements('description').firstOrNull?.innerText.trim() ?? '';
 
         if (title.isNotEmpty && link.isNotEmpty && _hasChinese(title)) {
-          debugPrint('[News] Article: $title');
+          log('[News] Article: $title');
           articles.add(NewsArticle(
             id: link,
             title: _cleanText(title),
@@ -145,7 +145,7 @@ class NewsApiService {
         if (articles.length >= 15) break;
       }
     } catch (e) {
-      debugPrint('[News] XML parse error: $e');
+      log('[News] XML parse error: $e');
     }
 
     return articles;
@@ -186,7 +186,7 @@ class NewsApiService {
         return _parseHtml(response.data.toString(), sourceName, url);
       }
     } catch (e) {
-      debugPrint('[News] HTTP error: $e');
+      log('[News] HTTP error: $e');
     }
     return [];
   }
@@ -252,7 +252,7 @@ class NewsApiService {
         return _parseArticle(response.data.toString(), article);
       }
     } catch (e) {
-      debugPrint('[News] Article fetch error: $e');
+      log('[News] Article fetch error: $e');
     }
     return article;
   }

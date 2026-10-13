@@ -103,6 +103,21 @@ final saveReadingPositionUseCaseProvider = Provider<SaveReadingPositionUseCase>(
   },
 );
 
+/// UseCase provider for looking up a file's history entry by path.
+final getFileByPathUseCaseProvider = Provider<GetFileByPathUseCase>((ref) {
+  return GetFileByPathUseCase(ref.watch(fileRepositoryProvider));
+});
+
+/// UseCase provider for clearing reading history.
+final clearHistoryUseCaseProvider = Provider<ClearHistoryUseCase>((ref) {
+  return ClearHistoryUseCase(ref.watch(fileRepositoryProvider));
+});
+
+/// UseCase provider for bookmarking the current reading position.
+final saveBookmarkUseCaseProvider = Provider<SaveBookmarkUseCase>((ref) {
+  return SaveBookmarkUseCase(ref.watch(fileRepositoryProvider));
+});
+
 // -----------------------------------------------------------------------------
 // PROGRESS MODULE
 // -----------------------------------------------------------------------------
@@ -161,4 +176,9 @@ final incrementArticlesReadUseCaseProvider =
 final addReadingMinutesUseCaseProvider = Provider<AddReadingMinutesUseCase>(
     (ref) {
   return AddReadingMinutesUseCase(ref.watch(progressRepositoryProvider));
+});
+
+/// UseCase provider for resetting all progress data.
+final resetProgressUseCaseProvider = Provider<ResetProgressUseCase>((ref) {
+  return ResetProgressUseCase(ref.watch(progressRepositoryProvider));
 });

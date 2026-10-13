@@ -1,6 +1,7 @@
 import 'dart:io' show Directory, File;
 
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../core/log.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -96,7 +97,7 @@ class DatabaseHelper {
           await File(path).delete();
           await prefs.setString('dict_asset_version', marker);
           exists = false;
-          debugPrint('[DB] Asset version $marker != $stored — re-copying');
+          log('[DB] Asset version $marker != $stored — re-copying');
         }
       } catch (_) {
         // маркера нет (старый ассет) — просто копируем при отсутствии
@@ -108,7 +109,7 @@ class DatabaseHelper {
         await Directory(dirname(path)).create(recursive: true);
       } catch (_) {}
 
-      debugPrint('[DB] Copying dictionary from assets...');
+      log('[DB] Copying dictionary from assets...');
       ByteData data = await rootBundle.load(join('assets', 'db', filePath));
       List<int> bytes = data.buffer.asUint8List(
         data.offsetInBytes,
@@ -116,29 +117,29 @@ class DatabaseHelper {
       );
 
       await File(path).writeAsBytes(bytes, flush: true);
-      debugPrint('[DB] Dictionary copied: ${(bytes.length / 1024 / 1024).toStringAsFixed(1)}MB');
+      log('[DB] Dictionary copied: ${(bytes.length / 1024 / 1024).toStringAsFixed(1)}MB');
     }
 
     final db = await openDatabase(path, readOnly: true);
-    debugPrint('[DB] Dictionary DB opened (readOnly)');
+    log('[DB] Dictionary DB opened (readOnly)');
 
     // Log available tables for debugging
     try {
       final tables = await db.rawQuery(
           "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name");
       final tableNames = tables.map((t) => t['name']).toList();
-      debugPrint('[DB] Dictionary tables: $tableNames');
+      log('[DB] Dictionary tables: $tableNames');
 
       for (final t in tables) {
         final name = t['name'] as String;
         if (!name.startsWith('sqlite_') && !name.startsWith('android_')) {
           final count = Sqflite.firstIntValue(
               await db.rawQuery('SELECT COUNT(*) FROM "$name"'));
-          debugPrint('[DB]   $name: $count rows');
+          log('[DB]   $name: $count rows');
         }
       }
     } catch (e) {
-      debugPrint('[DB] Error listing tables: $e');
+      log('[DB] Error listing tables: $e');
     }
 
     return db;
@@ -164,13 +165,13 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, _userDbName);
 
-    debugPrint('[DB] Opening user DB at: $path');
+    log('[DB] Opening user DB at: $path');
 
     final db = await openDatabase(
       path,
       version: 1,
       onCreate: (db, version) async {
-        debugPrint('[DB] Creating user tables...');
+        log('[DB] Creating user tables...');
 
         await db.execute('''
           CREATE TABLE IF NOT EXISTS user_vocabulary (
@@ -246,11 +247,11 @@ class DatabaseHelper {
         await db.execute(
             'CREATE INDEX IF NOT EXISTS idx_reading_history_path ON reading_history(file_path)');
 
-        debugPrint('[DB] User tables created successfully');
+        log('[DB] User tables created successfully');
       },
     );
 
-    debugPrint('[DB] User DB opened (read-write)');
+    log('[DB] User DB opened (read-write)');
     return db;
   }
 

@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import '../../core/log.dart';
 
 import '../../domain/model/news_models.dart';
 import '../../domain/repository/news_repository.dart';
@@ -45,7 +45,7 @@ class NewsRepositoryImpl implements INewsRepository {
         return articles;
       }
     } catch (e) {
-      debugPrint('[News] All sources failed: $e');
+      log('[News] All sources failed: $e');
     }
 
     // Честный офлайн: последние успешно загруженные новости (кеш),

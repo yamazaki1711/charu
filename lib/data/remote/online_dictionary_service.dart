@@ -1,5 +1,7 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
+import '../../core/log.dart';
 import 'package:html/parser.dart' as html_parser;
 
 import '../../domain/model/dictionary_models.dart';
@@ -16,14 +18,54 @@ class OnlineDictionaryService {
   /// `search()` returns to attach examples to the `DictionaryResult`.
   List<PinyinExample> lastExamples = const [];
 
+  /// True when the most recent [search] call was skipped because the
+  /// device appeared to be offline (connectivity probe failed), as
+  /// opposed to a real "not found" result. The caller uses this to show
+  /// an honest "no connection" message instead of "translation not found".
+  bool lastWasOffline = false;
+
+  /// Caches a negative connectivity result for this long so that looking
+  /// up many unknown words while offline doesn't pay a DNS-timeout per word.
+  static const _offlineCooldown = Duration(seconds: 20);
+  static DateTime? _offlineUntil;
+
   OnlineDictionaryService({Dio? dio}) : _dio = dio ?? Dio();
+
+  /// Cheap connectivity probe (DNS lookup with a short timeout) run before
+  /// any HTTP request — avoids multi-second Dio timeouts on every word
+  /// lookup when the device has no network at all.
+  Future<bool> _isOnline() async {
+    final cachedOffline = _offlineUntil;
+    if (cachedOffline != null && DateTime.now().isBefore(cachedOffline)) {
+      return false;
+    }
+    try {
+      final result = await InternetAddress.lookup('bkrs.info')
+          .timeout(const Duration(seconds: 3));
+      if (result.isNotEmpty && result.first.rawAddress.isNotEmpty) {
+        _offlineUntil = null;
+        return true;
+      }
+    } catch (_) {
+      // DNS failure or timeout — treat as offline below.
+    }
+    _offlineUntil = DateTime.now().add(_offlineCooldown);
+    return false;
+  }
 
   /// Поиск слова в онлайн-словаре
   Future<WordEntry?> search(String word) async {
     if (word.trim().isEmpty) return null;
+    lastWasOffline = false;
+
+    if (!await _isOnline()) {
+      lastWasOffline = true;
+      log('[Online] Skipped "$word" — no network connection');
+      return null;
+    }
 
     try {
-      debugPrint('[Online] Searching bkrs.info for: "$word"');
+      log('[Online] Searching bkrs.info for: "$word"');
 
       // 1. Делаем первый запрос
       var response = await _dio.get(
@@ -55,7 +97,7 @@ class OnlineDictionaryService {
 
         if (match != null && match.groupCount >= 1) {
           final caValue = match.group(1)!;
-          debugPrint('[Online] Bypassing bot protection with ca=$caValue');
+          log('[Online] Bypassing bot protection with ca=$caValue');
 
           response = await _dio.get(
             '$_baseUrl/slovo.php',
@@ -87,19 +129,19 @@ class OnlineDictionaryService {
       if (response.statusCode != null &&
           response.statusCode! >= 400 &&
           response.statusCode! < 500) {
-        debugPrint('[Online] Client error ${response.statusCode}: not found or bad request for "$word"');
+        log('[Online] Client error ${response.statusCode}: not found or bad request for "$word"');
       } else {
-        debugPrint('[Online] Bad status code: ${response.statusCode}');
+        log('[Online] Bad status code: ${response.statusCode}');
       }
     } on DioException catch (e) {
       if (e.response != null && (e.response!.statusCode ?? 0) >= 400) {
-        debugPrint(
+        log(
             '[Online] HTTP error ${e.response!.statusCode}: ${e.response!.statusMessage}');
       } else {
-        debugPrint('[Online] DioException: ${e.message}');
+        log('[Online] DioException: ${e.message}');
       }
     } catch (e) {
-      debugPrint('[Online] Unexpected error: $e');
+      log('[Online] Unexpected error: $e');
     }
 
     return null;
@@ -124,7 +166,7 @@ class OnlineDictionaryService {
       final pyEl = document.querySelector('.py, .pinyin');
       if (pyEl != null) {
         pinyin = pyEl.text.trim();
-        debugPrint('[Online] Found pinyin: "$pinyin"');
+        log('[Online] Found pinyin: "$pinyin"');
       }
 
       // Try to get translation from specific containers
@@ -134,7 +176,7 @@ class OnlineDictionaryService {
         final text = ruEl.text.trim();
         if (text.isNotEmpty && _isActualTranslation(text)) {
           translation = text;
-          debugPrint('[Online] Found translation via div.ru: "${text.substring(0, text.length.clamp(0, 60))}"');
+          log('[Online] Found translation via div.ru: "${text.substring(0, text.length.clamp(0, 60))}"');
         }
       }
 
@@ -146,7 +188,7 @@ class OnlineDictionaryService {
             final text = el.text.trim();
             if (text.isNotEmpty && _isActualTranslation(text) && text.length > 5) {
               translation = text;
-              debugPrint('[Online] Found translation via $selector');
+              log('[Online] Found translation via $selector');
               break;
             }
           }
@@ -163,7 +205,7 @@ class OnlineDictionaryService {
           final text = item.text.trim();
           if (text.isNotEmpty && _isActualTranslation(text) && text.length > 5) {
             translation = text;
-            debugPrint('[Online] Found translation via result list item');
+            log('[Online] Found translation via result list item');
             break;
           }
         }
@@ -186,12 +228,12 @@ class OnlineDictionaryService {
 
         if (lines.isNotEmpty) {
           translation = lines.first;
-          debugPrint('[Online] Found translation via body text fallback');
+          log('[Online] Found translation via body text fallback');
         }
       }
 
       if (translation != null) {
-        debugPrint('[Online] ✅ Final result for "$searchWord": pinyin="${pinyin ?? ""}", translation="${translation.substring(0, translation.length.clamp(0, 80))}"');
+        log('[Online] ✅ Final result for "$searchWord": pinyin="${pinyin ?? ""}", translation="${translation.substring(0, translation.length.clamp(0, 80))}"');
         return WordEntry(
           id: 0,
           simplified: searchWord,
@@ -202,9 +244,9 @@ class OnlineDictionaryService {
         );
       }
 
-      debugPrint('[Online] ❌ No valid translation found in HTML');
+      log('[Online] ❌ No valid translation found in HTML');
     } catch (e) {
-      debugPrint('[Online] Parse error: $e');
+      log('[Online] Parse error: $e');
     }
 
     return null;
@@ -245,7 +287,7 @@ class OnlineDictionaryService {
         ));
       }
     } catch (e) {
-      debugPrint('[Online] Failed to parse example pinyin: $e');
+      log('[Online] Failed to parse example pinyin: $e');
     }
     return examples;
   }

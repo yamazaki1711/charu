@@ -27,16 +27,19 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
   bool _isLoading = true;
   String? _error;
 
+  final ScrollController _scrollController = ScrollController();
   Timer? _sessionTick;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Add ~1 reading minute every 60 seconds of active reading.
+    // Add ~1 reading minute every 60 seconds of active reading, and persist
+    // the scroll position so the file resumes where the user left off.
     _sessionTick = Timer.periodic(const Duration(seconds: 60), (_) {
       ref.read(addReadingMinutesUseCaseProvider).call(minutes: 1);
       ref.read(updateStreakUseCaseProvider).call();
+      _savePosition();
     });
     _loadFile();
   }
@@ -44,6 +47,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
   @override
   void dispose() {
     _sessionTick?.cancel();
+    _savePosition();
+    _scrollController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -56,10 +61,12 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
       _sessionTick ??= Timer.periodic(const Duration(seconds: 60), (_) {
         ref.read(addReadingMinutesUseCaseProvider).call(minutes: 1);
         ref.read(updateStreakUseCaseProvider).call();
+        _savePosition();
       });
     } else {
       _sessionTick?.cancel();
       _sessionTick = null;
+      _savePosition();
     }
   }
 
@@ -71,17 +78,49 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
     try {
       final readFile = ref.read(readFileContentUseCaseProvider);
       final content = await readFile(widget.filePath);
+      final history =
+          await ref.read(getFileByPathUseCaseProvider).call(widget.filePath);
 
       setState(() {
         _content = content;
         _isLoading = false;
       });
+
+      // Resume at the last saved position (stored as a character offset;
+      // translated back to a scroll fraction once the list is laid out).
+      final lastPosition = history?.lastPosition ?? 0;
+      if (lastPosition > 0 && content.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!_scrollController.hasClients) return;
+          final maxExtent = _scrollController.position.maxScrollExtent;
+          if (maxExtent <= 0) return;
+          final fraction = (lastPosition / content.length).clamp(0.0, 1.0);
+          _scrollController.jumpTo(maxExtent * fraction);
+        });
+      }
     } catch (e) {
       setState(() {
         _error = e.toString();
         _isLoading = false;
       });
     }
+  }
+
+  /// Converts the current scroll fraction to a character offset and
+  /// persists it (position is stored in characters, not pixels, so it
+  /// stays meaningful across font-size and screen-size changes).
+  void _savePosition() {
+    final content = _content;
+    if (content == null || content.isEmpty) return;
+    if (!_scrollController.hasClients) return;
+    final maxExtent = _scrollController.position.maxScrollExtent;
+    final fraction = maxExtent > 0
+        ? (_scrollController.offset / maxExtent).clamp(0.0, 1.0)
+        : 0.0;
+    final charPosition = (fraction * content.length).round();
+    ref
+        .read(saveReadingPositionUseCaseProvider)
+        .call(widget.filePath, charPosition);
   }
 
   @override
@@ -165,12 +204,14 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
     }
 
     // Constrain content width on wide screens (tablet) so Chinese text
-    // lines don't stretch across the full screen.
+    // lines don't stretch across the full screen. Wrapped in a scroll view
+    // since SegmentedTextDisplay renders a single unbounded RichText.
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 700),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: SegmentedTextDisplay(text: _content!),
         ),
       ),
@@ -178,11 +219,34 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
   }
 
   Future<void> _addBookmark() async {
-    // TODO: Implement bookmark saving
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Закладки будут доступны в следующей версии')),
-      );
+    final content = _content;
+    final position = content != null && content.isNotEmpty
+        ? (() {
+            final maxExtent = _scrollController.hasClients
+                ? _scrollController.position.maxScrollExtent
+                : 0.0;
+            final fraction = maxExtent > 0
+                ? (_scrollController.offset / maxExtent).clamp(0.0, 1.0)
+                : 0.0;
+            return (fraction * content.length).round();
+          })()
+        : 0;
+
+    try {
+      await ref
+          .read(saveBookmarkUseCaseProvider)
+          .call(widget.filePath, position);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Закладка сохранена')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка сохранения закладки: $e')),
+        );
+      }
     }
   }
 }

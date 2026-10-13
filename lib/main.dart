@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'core/log.dart';
 import 'presentation/navigation/app_router.dart';
 import 'presentation/services/notification_service.dart';
 import 'presentation/state/app_settings_state.dart' show themeModeProvider;
@@ -14,7 +15,7 @@ void main() async {
   try {
     await initializeJieba();
   } catch (e) {
-    debugPrint('Jieba initialization failed: $e');
+    log('Jieba initialization failed: $e');
   }
 
   // Restore the daily reading reminder (if enabled) after a fresh launch.

@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show debugPrint;
+import '../../core/log.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../domain/model/progress_models.dart';
@@ -47,7 +47,7 @@ class ProgressRepositoryImpl implements IProgressRepository {
         readingMinutes: m['reading_minutes'] as int? ?? 0,
       );
     } catch (e) {
-      debugPrint('❌ Get today stats error: $e');
+      log('❌ Get today stats error: $e');
       return const DailyStats(date: '');
     }
   }
@@ -70,7 +70,7 @@ class ProgressRepositoryImpl implements IProgressRepository {
         whereArgs: [today],
       );
     } catch (e) {
-      debugPrint('❌ Update today stats error: $e');
+      log('❌ Update today stats error: $e');
     }
   }
 
@@ -103,7 +103,7 @@ class ProgressRepositoryImpl implements IProgressRepository {
           )
           .toList();
     } catch (e) {
-      debugPrint('❌ Get stats for range error: $e');
+      log('❌ Get stats for range error: $e');
       return [];
     }
   }
@@ -133,7 +133,7 @@ class ProgressRepositoryImpl implements IProgressRepository {
             : null,
       );
     } catch (e) {
-      debugPrint('❌ Get streak data error: $e');
+      log('❌ Get streak data error: $e');
       return const StreakData(currentStreak: 0, maxStreak: 0);
     }
   }
@@ -192,7 +192,7 @@ class ProgressRepositoryImpl implements IProgressRepository {
         [newStreak, maxStreak, today, DateTime.now().toIso8601String()],
       );
     } catch (e) {
-      debugPrint('❌ Update streak error: $e');
+      log('❌ Update streak error: $e');
     }
   }
 
@@ -224,7 +224,7 @@ class ProgressRepositoryImpl implements IProgressRepository {
           )
           .toList();
     } catch (e) {
-      debugPrint('❌ Get vocabulary error: $e');
+      log('❌ Get vocabulary error: $e');
       return [];
     }
   }
@@ -257,7 +257,7 @@ class ProgressRepositoryImpl implements IProgressRepository {
         maxStreak: streakData.maxStreak,
       );
     } catch (e) {
-      debugPrint('❌ Get progress summary error: $e');
+      log('❌ Get progress summary error: $e');
       return ProgressSummary(
         totalWordsSaved: 0,
         totalArticlesRead: 0,
@@ -283,7 +283,7 @@ class ProgressRepositoryImpl implements IProgressRepository {
         [today, count, count],
       );
     } catch (e) {
-      debugPrint('❌ Increment words saved error: $e');
+      log('❌ Increment words saved error: $e');
       // Propagate to the UI (dictionary popup shows a snackbar).
       rethrow;
     }
@@ -304,7 +304,7 @@ class ProgressRepositoryImpl implements IProgressRepository {
         [today, count, count],
       );
     } catch (e) {
-      debugPrint('❌ Increment articles read error: $e');
+      log('❌ Increment articles read error: $e');
       // The progress screen's refresh rethrows as an AsyncError, so the
       // user sees the failure banner (task #5).
       rethrow;
@@ -326,10 +326,36 @@ class ProgressRepositoryImpl implements IProgressRepository {
         [today, minutes, minutes],
       );
     } catch (e) {
-      debugPrint('❌ Add reading minutes error: $e');
+      log('❌ Add reading minutes error: $e');
       // Rejected: rethrowing here would tear down the reader on every
       // background tick. Errors stay visible in the Progress screen via
       // progressSummaryProvider (task #5).
+    }
+  }
+
+  @override
+  Future<void> resetProgress() async {
+    try {
+      final db = await _dbHelper.userDatabase;
+      await db.transaction((txn) async {
+        await txn.delete('user_vocabulary');
+        await txn.delete('daily_stats');
+        await txn.rawUpdate(
+          '''
+          INSERT INTO streak_data (id, current_streak, max_streak, last_active_date, updated_at)
+          VALUES (1, 0, 0, NULL, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            current_streak = 0,
+            max_streak = 0,
+            last_active_date = NULL,
+            updated_at = excluded.updated_at
+          ''',
+          [DateTime.now().toIso8601String()],
+        );
+      });
+    } catch (e) {
+      log('❌ Reset progress error: $e');
+      rethrow;
     }
   }
 

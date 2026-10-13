@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../core/log.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jieba_flutter/analysis/jieba_segmenter.dart';
@@ -15,19 +16,19 @@ bool _jiebaInitialized = false;
 
 Future<void> initializeJieba() async {
   if (kIsWeb) {
-    debugPrint('[Jieba] Skipped - Web platform');
+    log('[Jieba] Skipped - Web platform');
     return;
   }
 
   try {
-    debugPrint('[Jieba] Initializing...');
+    log('[Jieba] Initializing...');
     await JiebaSegmenter.init();
     _jiebaSegmenter = JiebaSegmenter();
     _jiebaInitialized = true;
-    debugPrint('[Jieba] Initialized successfully');
+    log('[Jieba] Initialized successfully');
   } catch (e, st) {
-    debugPrint('[Jieba] Init failed: $e');
-    debugPrint('[Jieba] Stack: $st');
+    log('[Jieba] Init failed: $e');
+    log('[Jieba] Stack: $st');
     _jiebaInitialized = false;
   }
 }
@@ -143,7 +144,7 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
   }
 
   void _onWordTapped(String word) async {
-    debugPrint('[Tap] Word tapped: "$word"');
+    log('[Tap] Word tapped: "$word"');
     final useCase = ref.read(lookupWordUseCaseProvider);
     final result = await useCase.call(word);
     if (!mounted) return;

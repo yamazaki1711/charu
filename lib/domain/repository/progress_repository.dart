@@ -31,4 +31,8 @@ abstract class IProgressRepository {
 
   /// Add reading minutes for today
   Future<void> addReadingMinutes(int minutes);
+
+  /// Wipes all saved vocabulary, daily stats and streak data back to a
+  /// fresh-install state. Irreversible.
+  Future<void> resetProgress();
 }

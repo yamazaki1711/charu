@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../data/repository/news_sources_repository.dart';
+import '../../../di/di.dart';
 import '../../services/notification_service.dart';
 import '../../state/app_settings_state.dart';
+import '../../state/file_state.dart';
 import '../../state/news_state.dart';
+import '../../state/progress_state.dart';
 
 /// ⚙️ Settings screen — app preferences.
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -181,12 +184,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: const Text('Отмена'),
           ),
           TextButton(
-            onPressed: () {
-              // TODO: Call use case to clear history
+            onPressed: () async {
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('История очищена')),
-              );
+              try {
+                await ref.read(clearHistoryUseCaseProvider).call();
+                ref.invalidate(recentFilesProvider);
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('История очищена')),
+                );
+              } catch (e) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Ошибка очистки: $e')),
+                );
+              }
             },
             child: const Text('Очистить', style: TextStyle(color: Colors.red)),
           ),
@@ -209,12 +221,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: const Text('Отмена'),
           ),
           TextButton(
-            onPressed: () {
-              // TODO: Call use case to reset progress
+            onPressed: () async {
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Прогресс сброшен')),
-              );
+              try {
+                await ref.read(resetProgressUseCaseProvider).call();
+                ref.invalidate(progressSummaryProvider);
+                ref.invalidate(vocabularyProvider);
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Прогресс сброшен')),
+                );
+              } catch (e) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Ошибка сброса: $e')),
+                );
+              }
             },
             child: const Text('Сбросить', style: TextStyle(color: Colors.red)),
           ),

@@ -44,3 +44,37 @@ class SaveReadingPositionUseCase {
     await _repository.saveReadingPosition(filePath, position);
   }
 }
+
+/// Use case for looking up a single file's history entry (e.g. to resume
+/// reading at its last saved position).
+class GetFileByPathUseCase {
+  final IFileRepository _repository;
+
+  GetFileByPathUseCase(this._repository);
+
+  Future<LocalFile?> call(String filePath) async {
+    return await _repository.getFileByPath(filePath);
+  }
+}
+
+/// Use case for clearing all reading history (Settings screen).
+class ClearHistoryUseCase {
+  final IFileRepository _repository;
+
+  ClearHistoryUseCase(this._repository);
+
+  Future<void> call() async {
+    await _repository.clearHistory();
+  }
+}
+
+/// Use case for bookmarking the current reading position.
+class SaveBookmarkUseCase {
+  final IFileRepository _repository;
+
+  SaveBookmarkUseCase(this._repository);
+
+  Future<void> call(String filePath, int position, {String? note}) async {
+    await _repository.addBookmark(filePath, position, note: note);
+  }
+}

@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:fast_gbk/fast_gbk.dart' as gbk;
 import 'package:file_picker/file_picker.dart' as fp;
-import 'package:flutter/foundation.dart' show debugPrint;
+import '../../core/log.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart';
 import 'package:xml/xml.dart' as xml;
@@ -63,7 +63,7 @@ class FileRepositoryImpl implements IFileRepository {
         lastOpened: DateTime.now(),
       );
     } catch (e) {
-      debugPrint('❌ File pick error: $e');
+      log('❌ File pick error: $e');
       return null;
     }
   }
@@ -110,7 +110,7 @@ class FileRepositoryImpl implements IFileRepository {
 
       return content;
     } catch (e) {
-      debugPrint('❌ File read error: $e');
+      log('❌ File read error: $e');
       rethrow;
     }
   }
@@ -136,7 +136,7 @@ class FileRepositoryImpl implements IFileRepository {
       try {
         return gbk.gbk.decode(bytes, allowMalformed: true);
       } catch (e) {
-        debugPrint('⚠️ GBK decode failed, falling back to UTF-8: $e');
+        log('⚠️ GBK decode failed, falling back to UTF-8: $e');
       }
     }
 
@@ -248,7 +248,7 @@ class FileRepositoryImpl implements IFileRepository {
           ? 'Не удалось извлечь текст из EPUB.'
           : text;
     } catch (e) {
-      debugPrint('❌ EPUB parse error: $e');
+      log('❌ EPUB parse error: $e');
       rethrow;
     }
   }
@@ -303,7 +303,7 @@ class FileRepositoryImpl implements IFileRepository {
         );
       }).toList();
     } catch (e) {
-      debugPrint('❌ Get recent files error: $e');
+      log('❌ Get recent files error: $e');
       return [];
     }
   }
@@ -345,7 +345,7 @@ class FileRepositoryImpl implements IFileRepository {
         whereArgs: [filePath],
       );
     } catch (e) {
-      debugPrint('❌ Save position error: $e');
+      log('❌ Save position error: $e');
     }
   }
 
@@ -359,7 +359,7 @@ class FileRepositoryImpl implements IFileRepository {
         whereArgs: [filePath],
       );
     } catch (e) {
-      debugPrint('❌ Remove file error: $e');
+      log('❌ Remove file error: $e');
     }
   }
 
@@ -369,7 +369,7 @@ class FileRepositoryImpl implements IFileRepository {
       final db = await _dbHelper.userDatabase;
       await db.delete('reading_history');
     } catch (e) {
-      debugPrint('❌ Clear history error: $e');
+      log('❌ Clear history error: $e');
     }
   }
 
@@ -401,8 +401,23 @@ class FileRepositoryImpl implements IFileRepository {
         totalLength: m['total_length'] as int? ?? 0,
       );
     } catch (e) {
-      debugPrint('❌ Get file by path error: $e');
+      log('❌ Get file by path error: $e');
       return null;
+    }
+  }
+
+  @override
+  Future<void> addBookmark(String filePath, int position, {String? note}) async {
+    try {
+      final db = await _dbHelper.userDatabase;
+      await db.insert('bookmarks', {
+        'file_path': filePath,
+        'position': position,
+        'note': note,
+      });
+    } catch (e) {
+      log('❌ Add bookmark error: $e');
+      rethrow;
     }
   }
 
@@ -426,7 +441,7 @@ class FileRepositoryImpl implements IFileRepository {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     } catch (e) {
-      debugPrint('❌ Save to history error: $e');
+      log('❌ Save to history error: $e');
     }
   }
 
@@ -441,7 +456,7 @@ class FileRepositoryImpl implements IFileRepository {
         whereArgs: [filePath],
       );
     } catch (e) {
-      debugPrint('❌ Update last opened error: $e');
+      log('❌ Update last opened error: $e');
     }
   }
 }

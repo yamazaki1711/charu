@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show debugPrint;
+import '../../core/log.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -67,7 +67,7 @@ class NotificationService {
     } catch (e) {
       // Best-effort: notifications are a nice-to-have; never break the
       // settings screen because of them.
-      debugPrint('[Notif] reminder scheduling failed: $e');
+      log('[Notif] reminder scheduling failed: $e');
     }
   }
 

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../di/di.dart';
 import '../../state/news_state.dart';
-import '../news/article_screen.dart';
 
 String _shortError(String e) {
   if (e.contains('Failed host lookup')) return 'DNS не разрешает домен';
@@ -95,11 +95,7 @@ class NewsScreen extends ConsumerWidget {
                 final article = articles[index];
                 return InkWell(
                   onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => ArticleScreen(articleId: article.id),
-                      ),
-                    );
+                    context.push('/news/article', extra: article.id);
                   },
                   child: Container(
                     decoration: BoxDecoration(
