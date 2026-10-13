@@ -31,6 +31,9 @@ class NewsRepositoryImpl implements INewsRepository {
   }
 
   @override
+  Map<String, String> get sourceErrors => _apiService.lastSourceErrors;
+
+  @override
   Future<List<NewsArticle>> getLatestNews() async {
     // Гарантия: источники из news_sources применяются ДО первого fetch
     // (не полагаемся на то, что внешний init уже отработал).

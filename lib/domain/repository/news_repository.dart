@@ -7,4 +7,8 @@ abstract class INewsRepository {
 
   /// Fetches the full text content of a specific article
   Future<NewsArticle> fetchArticleContent(String url);
+
+  /// Последние ошибки источников (имя → текст ошибки) — для диагностики
+  /// на пустой ленте.
+  Map<String, String> get sourceErrors;
 }

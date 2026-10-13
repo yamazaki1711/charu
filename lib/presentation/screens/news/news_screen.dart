@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../di/di.dart';
 import '../../state/news_state.dart';
 import '../news/article_screen.dart';
+
+String _shortError(String e) {
+  if (e.contains('Failed host lookup')) return 'DNS не разрешает домен';
+  if (e.contains('timeout') || e.contains('Timeout')) return 'таймаут соединения';
+  if (e.contains('Connection refused')) return 'соединение отклонено';
+  if (e.contains('handshake')) return 'ошибка TLS';
+  return e.length > 60 ? '\${e.substring(0, 60)}…' : e;
+}
 
 class NewsScreen extends ConsumerWidget {
   const NewsScreen({super.key});
@@ -26,7 +35,50 @@ class NewsScreen extends ConsumerWidget {
       body: newsState.when(
         data: (articles) {
           if (articles.isEmpty) {
-            return const Center(child: Text('Нет новостей 🙅‍♂️'));
+            final errors =
+                ref.read(newsRepositoryProvider).sourceErrors;
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Нет новостей',
+                        style: TextStyle(fontSize: 18)),
+                    const SizedBox(height: 8),
+                    Text(
+                      errors.isEmpty
+                          ? 'Источники ещё не опрашивались — потяните вниз для обновления'
+                          : 'Ни один источник недоступен:',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    if (errors.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      for (final e in errors.entries)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Text(
+                            '${e.key}: ${_shortError(e.value)}',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withValues(alpha: 0.6)),
+                          ),
+                        ),
+                    ],
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: () => ref.invalidate(newsFeedProvider),
+                      child: const Text('Обновить'),
+                    ),
+                  ],
+                ),
+              ),
+            );
           }
           // Constrain content width on wide screens (tablet) so cards
           // don't stretch across the full screen.

@@ -32,18 +32,26 @@ class NewsApiService {
   }
 
   Future<List<NewsArticle>> fetchLatestNews() async {
-    // Try RSS first
-    for (final source in _rssSources) {
-      try {
-        debugPrint('[News] Trying RSS: ${source['url']}');
-        final articles = await _fetchRss(source['url']!, source['name']!);
-        if (articles.isNotEmpty) {
-          debugPrint('[News] Success: ${articles.length} articles');
-          return articles;
-        }
-      } catch (e) {
-        debugPrint('[News] Error ${source['name']}: $e');
-      }
+    // Все RSS-источники параллельно; статьи объединяются и сортируются
+    // по дате (свежие сверху). Упавший источник не блокирует остальные.
+    debugPrint('[News] Fetching ${_rssSources.length} sources in parallel');
+    final results = await Future.wait(
+      _rssSources.map(
+        (source) async {
+          try {
+            return await _fetchRss(source['url']!, source['name']!);
+          } catch (e) {
+            debugPrint('[News] Error ${source['name']}: $e');
+            return <NewsArticle>[];
+          }
+        },
+      ),
+    );
+    final merged = results.expand((list) => list).toList()
+      ..sort((a, b) => b.publishedAt.compareTo(a.publishedAt));
+    if (merged.isNotEmpty) {
+      debugPrint('[News] Success: ${merged.length} articles total');
+      return merged;
     }
 
     // Fallback to HTML
@@ -61,20 +69,49 @@ class NewsApiService {
     return [];
   }
 
-  Future<List<NewsArticle>> _fetchRss(String url, String sourceName) async {
-    final response = await _dio.get(
-      url,
-      options: Options(
-        headers: {
-          'User-Agent': 'Mozilla/5.0',
-          'Accept': 'application/rss+xml, application/xml, text/xml, */*',
-        },
-        receiveTimeout: const Duration(seconds: 25),
-      ),
-    );
+  /// Публичные облачные прокси: в сетях, где прямой доступ к китайским
+  /// CDN невозможен, фид получается через глобальную инфраструктуру.
+  /// Порядок попыток: прямой -> allorigins -> codetabs.
+  static const List<String> _feedProxies = [
+    '',
+    'https://api.allorigins.win/raw?url=',
+    'https://api.codetabs.com/v1/proxy?quest=',
+  ];
 
-    if (response.statusCode == 200) {
-      return _parseRssXml(response.data.toString(), sourceName);
+  /// Последние ошибки источников — для диагностики на экране новостей.
+  final Map<String, String> lastSourceErrors = {};
+
+  Future<List<NewsArticle>> _fetchRss(String url, String sourceName) async {
+    for (final proxy in _feedProxies) {
+      final target =
+          proxy.isEmpty ? url : '$proxy${Uri.encodeComponent(url)}';
+      try {
+        final response = await _dio.get(
+          target,
+          options: Options(
+            headers: {
+              'User-Agent': 'Mozilla/5.0',
+              'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+            },
+            connectTimeout: const Duration(seconds: 8),
+            receiveTimeout: const Duration(seconds: 15),
+          ),
+        );
+        if (response.statusCode == 200) {
+          final articles = _parseRssXml(response.data.toString(), sourceName);
+          if (articles.isNotEmpty) {
+            if (proxy.isNotEmpty) {
+              debugPrint('[News] $sourceName: fetched via proxy');
+            }
+            lastSourceErrors.remove(sourceName);
+            return articles;
+          }
+        }
+      } catch (e) {
+        lastSourceErrors[sourceName] = e.toString();
+        debugPrint(
+            '[News] RSS $sourceName via ${proxy.isEmpty ? 'direct' : 'proxy'}: $e');
+      }
     }
     return [];
   }
