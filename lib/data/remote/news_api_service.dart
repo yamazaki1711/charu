@@ -9,9 +9,12 @@ class NewsApiService {
 
   NewsApiService({Dio? dio}) : _dio = dio ?? Dio();
 
+  /// Дефолтные RSS: три независимых домена (если news_sources пуст/недоступен).
+  /// sh.xml мёртв (404) — не использовать.
   static const List<Map<String, String>> kDefaultRssSources = [
-    {'name': '中国新闻网', 'url': 'https://www.chinanews.com.cn/rss/sh.xml'},
     {'name': '中国生活', 'url': 'https://www.chinanews.com.cn/rss/life.xml'},
+    {'name': '即时新闻', 'url': 'https://www.chinanews.com.cn/rss/scroll-news.xml'},
+    {'name': '人民日报时政', 'url': 'http://www.people.com.cn/rss/politics.xml'},
   ];
 
   static const List<Map<String, String>> _htmlSources = [
@@ -66,7 +69,7 @@ class NewsApiService {
           'User-Agent': 'Mozilla/5.0',
           'Accept': 'application/rss+xml, application/xml, text/xml, */*',
         },
-        receiveTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 25),
       ),
     );
 
@@ -138,7 +141,7 @@ class NewsApiService {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           },
-          receiveTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 25),
         ),
       );
 
@@ -204,7 +207,7 @@ class NewsApiService {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           },
-          receiveTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 25),
         ),
       );
 

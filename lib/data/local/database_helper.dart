@@ -3,6 +3,7 @@ import 'dart:io' show Directory, File;
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter/services.dart';
 import 'package:path/path.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
 /// Database helper to manage the SQLite connection to the pre-populated
@@ -78,7 +79,29 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    final exists = await databaseExists(path);
+    var exists = await databaseExists(path);
+
+    // Версионирование ассета: маркер assets/db/asset_version.txt.
+    // При смене версии рабочая копия словаря перезаливается (она
+    // read-only, пользовательские данные живут в charu_user.db) —
+    // иначе новые источники/статьи не доезжали при установке поверх.
+    if (exists) {
+      try {
+        final marker = await rootBundle
+            .loadString('assets/db/asset_version.txt')
+            .then((s) => s.trim());
+        final prefs = await SharedPreferences.getInstance();
+        final stored = prefs.getString('dict_asset_version') ?? '1';
+        if (marker != stored) {
+          await File(path).delete();
+          await prefs.setString('dict_asset_version', marker);
+          exists = false;
+          debugPrint('[DB] Asset version $marker != $stored — re-copying');
+        }
+      } catch (_) {
+        // маркера нет (старый ассет) — просто копируем при отсутствии
+      }
+    }
 
     if (!exists) {
       try {
