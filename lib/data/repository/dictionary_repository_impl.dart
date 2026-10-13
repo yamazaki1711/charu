@@ -159,6 +159,7 @@ class DictionaryRepositoryImpl implements IDictionaryRepository {
           translation: onlineResult.translation,
           source: 'online',
           icon: '🌐',
+          examples: _onlineService.lastExamples,
         );
       }
       debugPrint('[Dict] ❌ Not found online (or invalid result)');

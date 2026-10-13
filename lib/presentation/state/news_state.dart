@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/repository/news_sources_repository.dart';
 import '../../domain/model/news_models.dart';
 import '../../di/di.dart';
 
@@ -10,6 +11,8 @@ import '../../di/di.dart';
 class NewsFeedNotifier extends AsyncNotifier<List<NewsArticle>> {
   @override
   Future<List<NewsArticle>> build() async {
+    // Ensure news sources are loaded before fetching the feed.
+    await ref.read(newsSourcesProvider.notifier).load();
     return _fetch();
   }
 
@@ -31,10 +34,8 @@ final newsFeedProvider =
     );
 
 /// FutureProvider for a specific article's full content.
-final articleContentProvider = FutureProvider.family<NewsArticle, String>((
-  ref,
-  articleId,
-) async {
+final articleContentProvider =
+    FutureProvider.family<NewsArticle, String>((ref, articleId) async {
   final useCase = ref.read(fetchArticleContentUseCaseProvider);
   return useCase.call(articleId);
 });

@@ -2,6 +2,8 @@
 
 **CHARU** (читается "чару") — мобильное приложение для чтения китайских текстов на упрощённых иероглифах с интегрированным китайско-русским словарём БКРС.
 
+> **Статус (октябрь 2026):** v0.1.0 · полный офлайн-словарь БКРС (**863 740 статей** с пиньинем) · пиньин-аннотации в читалке · новостная лента · адаптация под планшеты · release-сборка подписана (см. [Releases](../../releases))
+
 ## 📱 Возможности
 
 ### 🔍 5-уровневая система поиска слов
@@ -100,14 +102,31 @@ flutter run
 
 ### Сборка БД
 
-База данных хранится в `assets/db/charu_dict.db`. Для создания полной БД:
+База данных хранится в `assets/db/charu_bkrs.db`. Для создания полной БД:
 
 ```bash
 # Использовать готовый скрипт
 dart run scripts/generate_test_db.dart
 
 # Или вручную через SQLite
-sqlite3 assets/db/charu_dict.db < schema.sql
+sqlite3 assets/db/charu_bkrs.db < schema.sql
+```
+
+### Сборка release-APK
+
+```bash
+# Ключ подписи: ~/keystores/charu-release.jks
+# Конфигурация: android/key.properties (storePassword, keyAlias, storeFile)
+
+# Сборка (если сборка из ~/Documents зависла — известная проблема
+# файлового I/O — используйте копию в /tmp)
+rsync -a --exclude build --exclude .gradle --exclude .dart_tool \
+  ~/Documents/charu/ /tmp/charu-fix/
+cd /tmp/charu-fix && flutter build apk --release
+
+# Верификация подписи
+~/Library/Android/sdk/build-tools/36.0.0/apksigner verify \
+  --print-certs build/app/outputs/flutter-apk/app-release.apk
 ```
 
 ## 📦 Структура базы данных

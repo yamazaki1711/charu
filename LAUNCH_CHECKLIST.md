@@ -24,10 +24,10 @@ flutter pub get
 ### 3. Проверка БД
 ```bash
 # Проверка наличия файла
-dir assets\db\charu_dict.db
+dir assets\db\charu_bkrs.db
 
 # Ожидаемый результат:
-# charu_dict.db    ~90 KB
+# charu_bkrs.db    ~90 KB
 ```
 
 ### 4. Анализ кода
@@ -126,7 +126,7 @@ flutter run -d chrome
 dart run scripts/generate_test_db.dart
 
 # Проверить путь
-dir assets\db\charu_dict.db
+dir assets\db\charu_bkrs.db
 
 # Clean и rebuild
 flutter clean
@@ -142,7 +142,7 @@ flutter run
 1. Проверить данные в БД:
    ```bash
    # Через SQLite
-   sqlite3 assets\db\charu_dict.db "SELECT * FROM dictionary LIMIT 5;"
+   sqlite3 assets\db\charu_bkrs.db "SELECT * FROM dictionary LIMIT 5;"
    ```
 
 2. Проверить запрос:

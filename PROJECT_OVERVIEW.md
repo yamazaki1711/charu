@@ -83,7 +83,7 @@ c:\charu\
 │
 ├── assets/
 │   ├── db/                  # Базы данных
-│   │   ├── charu_dict.db   # Словари (88 KB)
+│   │   ├── charu_bkrs.db   # Словари (88 KB)
 │   │   └── schema.sql      # Схема
 │   └── icons/              # Иконки
 │

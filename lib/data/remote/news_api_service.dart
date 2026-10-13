@@ -9,7 +9,7 @@ class NewsApiService {
 
   NewsApiService({Dio? dio}) : _dio = dio ?? Dio();
 
-  static const List<Map<String, String>> _rssSources = [
+  static const List<Map<String, String>> kDefaultRssSources = [
     {'name': '中国新闻网', 'url': 'https://www.chinanews.com.cn/rss/sh.xml'},
     {'name': '中国生活', 'url': 'https://www.chinanews.com.cn/rss/life.xml'},
   ];
@@ -17,6 +17,16 @@ class NewsApiService {
   static const List<Map<String, String>> _htmlSources = [
     {'name': '新浪', 'url': 'https://news.sina.com.cn'},
   ];
+
+  /// Источники RSS из таблицы news_sources (если сконфигурированы),
+  /// иначе — [kDefaultRssSources].
+  List<Map<String, String>> _rssSources = kDefaultRssSources;
+
+  /// Подменить дефолтные RSS-источники (вызывается из
+  /// [NewsRepositoryImpl.configureSources]).
+  void configureSources(List<Map<String, String>> rssSources) {
+    if (rssSources.isNotEmpty) _rssSources = rssSources;
+  }
 
   Future<List<NewsArticle>> fetchLatestNews() async {
     // Try RSS first

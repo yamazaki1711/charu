@@ -4,7 +4,7 @@ void main() {
   final dbFiles = [
     'assets/db/charu_bkrs.db',
     'assets/db/charu_bkrs_large.db',
-    'assets/db/charu_dict.db',
+    'assets/db/charu_bkrs.db',
   ];
 
   for (final path in dbFiles) {

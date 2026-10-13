@@ -14,6 +14,7 @@ import '../domain/usecase/file_usecases.dart';
 import '../domain/usecase/progress_usecases.dart';
 import '../domain/repository/news_repository.dart';
 import '../data/repository/news_repository_impl.dart';
+import '../data/repository/news_sources_repository.dart';
 import '../domain/usecase/news_usecases.dart';
 
 /// Database Helper provider (singleton).
@@ -55,7 +56,9 @@ final saveWordUseCaseProvider = Provider<SaveWordUseCase>((ref) {
 // -----------------------------------------------------------------------------
 
 final newsRepositoryProvider = Provider<INewsRepository>((ref) {
-  return NewsRepositoryImpl();
+  final repo = NewsRepositoryImpl();
+  repo.configureSources(ref.read(newsSourcesRepositoryProvider));
+  return repo;
 });
 
 final getLatestNewsUseCaseProvider = Provider<GetLatestNewsUseCase>((ref) {
@@ -140,4 +143,22 @@ final getVocabularyUseCaseProvider = Provider<GetVocabularyUseCase>((ref) {
 /// UseCase provider for getting stats for a date range.
 final getStatsForRangeUseCaseProvider = Provider<GetStatsForRangeUseCase>((ref) {
   return GetStatsForRangeUseCase(ref.watch(progressRepositoryProvider));
+});
+
+/// UseCase provider for incrementing the saved-words counter.
+final incrementWordsSavedUseCaseProvider =
+    Provider<IncrementWordsSavedUseCase>((ref) {
+  return IncrementWordsSavedUseCase(ref.watch(progressRepositoryProvider));
+});
+
+/// UseCase provider for incrementing the articles-read counter.
+final incrementArticlesReadUseCaseProvider =
+    Provider<IncrementArticlesReadUseCase>((ref) {
+  return IncrementArticlesReadUseCase(ref.watch(progressRepositoryProvider));
+});
+
+/// UseCase provider for adding reading minutes.
+final addReadingMinutesUseCaseProvider = Provider<AddReadingMinutesUseCase>(
+    (ref) {
+  return AddReadingMinutesUseCase(ref.watch(progressRepositoryProvider));
 });

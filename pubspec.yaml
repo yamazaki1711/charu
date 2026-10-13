@@ -36,6 +36,15 @@ dependencies:
   # Settings Storage
   shared_preferences: ^2.5.3
 
+  # Archive / File decoding
+  archive: ^3.6.1
+  fast_gbk: ^1.0.0
+  pinyin: ^3.3.0
+
+  # Notifications
+  flutter_local_notifications: ^19.4.2
+  timezone: ^0.10.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

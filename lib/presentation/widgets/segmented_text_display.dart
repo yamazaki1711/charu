@@ -5,7 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:jieba_flutter/analysis/jieba_segmenter.dart';
 
 import '../../di/di.dart';
+import '../state/app_settings_state.dart'
+    show showPinyinProvider, fontSizeProvider;
 import 'dictionary_popup.dart';
+import 'pinyin_helper.dart';
 
 JiebaSegmenter? _jiebaSegmenter;
 bool _jiebaInitialized = false;
@@ -15,7 +18,7 @@ Future<void> initializeJieba() async {
     debugPrint('[Jieba] Skipped - Web platform');
     return;
   }
-  
+
   try {
     debugPrint('[Jieba] Initializing...');
     await JiebaSegmenter.init();
@@ -34,8 +37,13 @@ bool get isJiebaReady => _jiebaInitialized;
 List<String> segmentChinese(String text) {
   if (text.isEmpty) return [];
 
-  final RegExp regex = RegExp(r'([\u4E00-\u9FA5\u3400-\u4DBF]+)|([^\u4E00-\u9FA5\u3400-\u4DBF]+)');
-  final matches = regex.allMatches(text);
+  // Collapse consecutive whitespace (spaces, tabs, newlines from HTML
+  // sources) into a single space so the rendered paragraph has no gaps.
+  final normalized = text.replaceAll(RegExp(r'\s+'), ' ');
+
+  final RegExp regex =
+      RegExp(r'([\u4E00-\u9FA5\u3400-\u4DBF]+)|([^\u4E00-\u9FA5\u3400-\u4DBF]+)');
+  final matches = regex.allMatches(normalized);
 
   final List<String> finalWords = [];
 
@@ -92,6 +100,7 @@ class SegmentedTextDisplay extends ConsumerStatefulWidget {
 
 class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
   List<String> _segments = [];
+  final Map<String, String> _pinyinCache = {};
   final List<TapGestureRecognizer> _recognizers = [];
 
   @override
@@ -124,6 +133,12 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
   void _segmentText() {
     setState(() {
       _segments = segmentChinese(widget.text);
+      // Pre-fetch pinyin for all Chinese segments (cached).
+      for (final word in _segments) {
+        if (_containsChinese(word) && !_pinyinCache.containsKey(word)) {
+          _pinyinCache[word] = PinyinHelper.getPinyin(word);
+        }
+      }
     });
   }
 
@@ -138,9 +153,11 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final showPinyin = ref.watch(showPinyinProvider);
+    final fontSize = ref.watch(fontSizeProvider).toDouble();
     final textStyle = TextStyle(
       color: theme.colorScheme.onSurface,
-      fontSize: 18,
+      fontSize: fontSize,
       height: 1.6,
     );
 
@@ -150,29 +167,74 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
 
     _disposeRecognizers();
 
-    final spans = _segments.map((word) {
+    final spans = <InlineSpan>[];
+    for (final word in _segments) {
       final isChinese = _containsChinese(word);
-      TapGestureRecognizer? recognizer;
-      
-      if (isChinese) {
-        recognizer = TapGestureRecognizer()
-          ..onTap = () {
-            _onWordTapped(word);
-          };
-        _recognizers.add(recognizer);
+
+      if (!isChinese) {
+        spans.add(TextSpan(text: word, style: textStyle));
+        continue;
       }
 
-      return TextSpan(
-        text: word,
-        style: isChinese ? textStyle.copyWith(
-          decoration: TextDecoration.underline,
-          decorationColor: theme.colorScheme.primary.withValues(alpha: 0.4),
-          decorationStyle: TextDecorationStyle.dotted,
-        ) : textStyle,
-        recognizer: recognizer,
-      );
-    }).toList();
+      final recognizer = TapGestureRecognizer()..onTap = () {
+        _onWordTapped(word);
+      };
+      _recognizers.add(recognizer);
 
-    return RichText(text: TextSpan(children: spans));
+      final wordStyle = textStyle.copyWith(
+        decoration: TextDecoration.underline,
+        decorationColor: theme.colorScheme.primary.withValues(alpha: 0.4),
+        decorationStyle: TextDecorationStyle.dotted,
+      );
+
+      if (!showPinyin) {
+        // Clean TextSpan mode (pinyin toggle off).
+        spans.add(TextSpan(text: word, style: wordStyle, recognizer: recognizer));
+        continue;
+      }
+
+      final pinyin = _pinyinCache[word] ?? PinyinHelper.getPinyin(word);
+      if (pinyin.isEmpty) {
+        spans.add(TextSpan(text: word, style: wordStyle, recognizer: recognizer));
+        continue;
+      }
+
+      // Ruby-style annotation: WidgetSpan with a Column(min) —
+      // word on top, pinyin below (small, grey, centered).
+      // PlaceholderAlignment.baseline + TextBaseline.alphabetic aligns the
+      // word's baseline with the surrounding Latin/punctuation text so
+      // inline Latin (e.g. "get" in "一起get科普") stays on the word line,
+      // not the pinyin line.
+      spans.add(WidgetSpan(
+        alignment: PlaceholderAlignment.baseline,
+        baseline: TextBaseline.alphabetic,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _onWordTapped(word),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(word, style: wordStyle),
+              const SizedBox(height: 1),
+              Text(
+                pinyin,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  height: 1.0,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ));
+    }
+
+    return RichText(
+      softWrap: true,
+      text: TextSpan(children: spans, style: textStyle),
+    );
   }
 }

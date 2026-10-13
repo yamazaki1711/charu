@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../main.dart';
+import '../../../data/repository/news_sources_repository.dart';
+import '../../services/notification_service.dart';
+import '../../state/app_settings_state.dart';
+import '../../state/news_state.dart';
 
 /// ⚙️ Settings screen — app preferences.
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -13,9 +16,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  bool _notificationsEnabled = true;
   String _notificationTime = '18:00';
-  int _fontSize = 18;
 
   @override
   void initState() {
@@ -26,22 +27,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
       _notificationTime = prefs.getString('notification_time') ?? '18:00';
-      _fontSize = prefs.getInt('font_size') ?? 18;
     });
   }
 
   Future<void> _saveNotifications(bool enabled) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('notifications_enabled', enabled);
-    setState(() => _notificationsEnabled = enabled);
+    // Persist via the live provider (writes to SharedPreferences) and
+    // schedule/cancel the daily reminder accordingly.
+    await ref.read(notificationsEnabledProvider.notifier).set(enabled);
+    await NotificationService.instance.onReminderChanged(enabled, _notificationTime);
   }
 
   Future<void> _saveFontSize(int size) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('font_size', size);
-    setState(() => _fontSize = size);
+    // Persist via the live provider so the reader rebuilds immediately.
+    await ref.read(fontSizeProvider.notifier).set(size);
+  }
+
+  Future<void> _saveShowPinyin(bool value) async {
+    // Persist via the live provider so the reader rebuilds immediately.
+    await ref.read(showPinyinProvider.notifier).set(value);
   }
 
   @override
@@ -57,36 +61,71 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // Appearance Section
           _SectionTitle(title: 'Внешний вид'),
           const _ThemeTile(),
-          _FontSizeTile(
-            currentSize: _fontSize,
-            onChanged: _saveFontSize,
+          Consumer(
+            builder: (context, ref, _) {
+              final currentSize = ref.watch(fontSizeProvider);
+              return _FontSizeTile(
+                currentSize: currentSize,
+                onChanged: _saveFontSize,
+              );
+            },
+          ),
+          Consumer(
+            builder: (context, ref, _) {
+              final showPinyin = ref.watch(showPinyinProvider);
+              return _SwitchTile(
+                title: 'Показывать пиньинь',
+                subtitle: 'Фонетика над словами в читалке и в словаре',
+                value: showPinyin,
+                onChanged: _saveShowPinyin,
+                icon: Icons.translate,
+              );
+            },
           ),
           const SizedBox(height: 24),
 
           // Notifications Section
           _SectionTitle(title: 'Уведомления'),
-          _SwitchTile(
-            title: 'Ежедневные напоминания',
-            subtitle: 'Напоминать о чтении в выбранное время',
-            value: _notificationsEnabled,
-            onChanged: _saveNotifications,
+          Consumer(
+            builder: (context, ref, _) {
+              final enabled = ref.watch(notificationsEnabledProvider);
+              return _SwitchTile(
+                title: 'Ежедневные напоминания',
+                subtitle: 'Напоминать о чтении в выбранное время',
+                value: enabled,
+                onChanged: _saveNotifications,
+              );
+            },
           ),
-          if (_notificationsEnabled)
-            _TimePickerTile(
-              currentTime: _notificationTime,
-              onChanged: (time) async {
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setString('notification_time', time);
-                setState(() => _notificationTime = time);
-              },
-            ),
+          Consumer(
+            builder: (context, ref, _) {
+              final enabled = ref.watch(notificationsEnabledProvider);
+              if (!enabled) return const SizedBox.shrink();
+              return _TimePickerTile(
+                currentTime: _notificationTime,
+                onChanged: (time) async {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setString('notification_time', time);
+                  if (!mounted) return;
+                  setState(() => _notificationTime = time);
+                  await NotificationService.instance
+                      .onReminderChanged(true, time);
+                },
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+
+          // News Sources Section
+          _SectionTitle(title: 'Источники новостей'),
+          const _NewsSourcesList(),
           const SizedBox(height: 24),
 
           // Dictionary Section
           _SectionTitle(title: 'Словарь'),
           _InfoTile(
             title: 'Офлайн-словарь',
-            subtitle: 'БКРС (~250k записей)',
+            subtitle: 'БКРС (~860k записей)',
             trailing: const Icon(Icons.check_circle, color: Colors.green),
           ),
           _InfoTile(
@@ -283,19 +322,21 @@ class _SwitchTile extends StatelessWidget {
   final String? subtitle;
   final bool value;
   final Function(bool) onChanged;
+  final IconData icon;
 
   const _SwitchTile({
     required this.title,
     this.subtitle,
     required this.value,
     required this.onChanged,
+    this.icon = Icons.notifications,
   });
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: SwitchListTile(
-        secondary: const Icon(Icons.notifications),
+        secondary: Icon(icon),
         title: Text(title),
         subtitle: subtitle != null ? Text(subtitle!) : null,
         value: value,
@@ -335,6 +376,49 @@ class _TimePickerTile extends StatelessWidget {
           },
         ),
       ),
+    );
+  }
+}
+
+class _NewsSourcesList extends ConsumerWidget {
+  const _NewsSourcesList();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sources = ref.watch(newsSourcesProvider);
+    final notifier = ref.read(newsSourcesProvider.notifier);
+
+    // Ensure sources are loaded on first build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      notifier.load();
+    });
+
+    if (sources.isEmpty) {
+      return const Card(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text('Загрузка источников...'),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (final source in sources)
+          Card(
+            child: SwitchListTile(
+              secondary: const Icon(Icons.rss_feed),
+              title: Text(source.name),
+              subtitle: Text(source.url),
+              value: source.enabled,
+              onChanged: (enabled) async {
+                await notifier.toggle(source.id, enabled);
+                // Reload feed immediately with the new source set.
+                ref.read(newsFeedProvider.notifier).refresh();
+              },
+            ),
+          ),
+      ],
     );
   }
 }

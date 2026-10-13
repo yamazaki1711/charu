@@ -28,13 +28,18 @@ class NewsScreen extends ConsumerWidget {
           if (articles.isEmpty) {
             return const Center(child: Text('Нет новостей 🙅‍♂️'));
           }
-          return RefreshIndicator(
-            onRefresh: ref.read(newsFeedProvider.notifier).refresh,
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: articles.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 16),
-              itemBuilder: (context, index) {
+          // Constrain content width on wide screens (tablet) so cards
+          // don't stretch across the full screen.
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 700),
+              child: RefreshIndicator(
+                onRefresh: ref.read(newsFeedProvider.notifier).refresh,
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: articles.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 16),
+                  itemBuilder: (context, index) {
                 final article = articles[index];
                 return InkWell(
                   onTap: () {
@@ -68,6 +73,35 @@ class NewsScreen extends ConsumerWidget {
                               height: 150,
                               width: double.infinity,
                               fit: BoxFit.cover,
+                              loadingBuilder: (context, child, progress) {
+                                if (progress == null) return child;
+                                return SizedBox(
+                                  height: 150,
+                                  width: double.infinity,
+                                  child: Container(
+                                    color: theme.colorScheme.surfaceContainerHighest,
+                                    alignment: Alignment.center,
+                                    child: SizedBox(
+                                      width: 28,
+                                      height: 28,
+                                      child: const CircularProgressIndicator(strokeWidth: 2),
+                                    ),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stack) {
+                                return Container(
+                                  height: 150,
+                                  width: double.infinity,
+                                  color: theme.colorScheme.surfaceContainerHighest,
+                                  alignment: Alignment.center,
+                                  child: Icon(
+                                    Icons.broken_image_outlined,
+                                    size: 40,
+                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                                  ),
+                                );
+                              },
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -104,7 +138,7 @@ class NewsScreen extends ConsumerWidget {
                             ),
                             const Spacer(),
                             Text(
-                              '${article.publishedAt.hour}:${article.publishedAt.minute.toString().padLeft(2, '0')}',
+                              _formatDate(article.publishedAt),
                               style: TextStyle(
                                 fontSize: 14,
                                 color: theme.colorScheme.onSurface.withValues(
@@ -118,7 +152,9 @@ class NewsScreen extends ConsumerWidget {
                     ),
                   ),
                 );
-              },
+                  },
+                ),
+              ),
             ),
           );
         },
@@ -131,5 +167,28 @@ class NewsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// Formats a publication date for the list footer:
+  /// today → "09:30", this year → "6 янв 09:30", else → "6 янв 2024".
+  String _formatDate(DateTime dt) {
+    final now = DateTime.now();
+    final time =
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    if (dt.year == now.year) {
+      if (dt.difference(now).inHours.abs() < 24) {
+        return time;
+      }
+      return '${_ruDate(dt)} $time';
+    }
+    return '${_ruDate(dt)} ${dt.year}';
+  }
+
+  String _ruDate(DateTime dt) {
+    const months = [
+      'янв', 'фев', 'мар', 'апр', 'май', 'июн',
+      'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
+    ];
+    return '${dt.day} ${months[dt.month - 1]}';
   }
 }

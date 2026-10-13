@@ -1,13 +1,32 @@
 import '../../domain/model/news_models.dart';
 import '../../domain/repository/news_repository.dart';
 import '../remote/news_api_service.dart';
+import 'news_sources_repository.dart';
 
 class NewsRepositoryImpl implements INewsRepository {
   final NewsApiService _apiService;
   List<NewsArticle>? _cachedArticles;
 
-  NewsRepositoryImpl({NewsApiService? apiService}) 
+  NewsRepositoryImpl({NewsApiService? apiService})
       : _apiService = apiService ?? NewsApiService();
+
+  /// Инициализация источников из news_sources (через
+  /// [NewsSourcesRepository]) — RSS-источники передаются в API-сервис.
+  /// На web-платформе и при ошибках DB остаётся дефолтный набор сервиса.
+  Future<void> configureSources(NewsSourcesRepository sourcesRepository) async {
+    try {
+      final enabled = await sourcesRepository.getEnabledSources();
+      if (enabled.isEmpty) return;
+      _apiService.configureSources(
+        enabled
+            .where((s) => s.type == 'rss')
+            .map((s) => {'name': s.name, 'url': s.url})
+            .toList(),
+      );
+    } catch (_) {
+      // DB недоступен (например, web) — используем дефолтные источники.
+    }
+  }
 
   @override
   Future<List<NewsArticle>> getLatestNews() async {

@@ -2,13 +2,13 @@ import 'dart:io';
 import 'package:path/path.dart';
 import 'package:sqlite3/sqlite3.dart';
 
-/// Скрипт для генерации тестовой базы данных charu_dict.db
+/// Скрипт для генерации тестовой базы данных charu_bkrs.db
 /// 
 /// Запуск: dart run scripts/generate_test_db.dart
 void main() async {
   print('🚀 Генерация тестовой БД CHARU...');
 
-  final dbPath = join(Directory.current.path, 'assets', 'db', 'charu_dict.db');
+  final dbPath = join(Directory.current.path, 'assets', 'db', 'charu_bkrs.db');
   final file = File(dbPath);
 
   // Удаляем старую БД если существует

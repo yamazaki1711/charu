@@ -8,7 +8,7 @@ import 'package:sqlite3/sqlite3.dart';
 void main() async {
   print('🚀 Выполнение схемы БД CHARU...');
 
-  final dbPath = path.join(Directory.current.path, 'assets', 'db', 'charu_dict.db');
+  final dbPath = path.join(Directory.current.path, 'assets', 'db', 'charu_bkrs.db');
   final file = File(dbPath);
   final schemaFile = File(path.join(Directory.current.path, 'schema.sql'));
 

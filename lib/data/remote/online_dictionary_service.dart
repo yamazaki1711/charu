@@ -9,6 +9,13 @@ class OnlineDictionaryService {
   final Dio _dio;
   static const String _baseUrl = 'https://bkrs.info';
 
+  /// Pinyin-annotated examples parsed from the last successful search.
+  ///
+  /// Populated by [search] after each successful fetch; empty otherwise.
+  /// The caller (DictionaryRepositoryImpl) can read this field after
+  /// `search()` returns to attach examples to the `DictionaryResult`.
+  List<PinyinExample> lastExamples = const [];
+
   OnlineDictionaryService({Dio? dio}) : _dio = dio ?? Dio();
 
   /// Поиск слова в онлайн-словаре
@@ -65,6 +72,7 @@ class OnlineDictionaryService {
                 'Referer': 'https://bkrs.info/',
               },
               receiveTimeout: const Duration(seconds: 10),
+              validateStatus: (status) => status != null && status < 500,
             ),
           );
         }
@@ -72,11 +80,24 @@ class OnlineDictionaryService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final html = response.data.toString();
+        // Extract pinyin-annotated examples from the page (side-channel).
+        lastExamples = _parseExamplePinyin(html);
         return _parseSearchResult(html, word);
       }
-      debugPrint('[Online] Bad status code: ${response.statusCode}');
+      if (response.statusCode != null &&
+          response.statusCode! >= 400 &&
+          response.statusCode! < 500) {
+        debugPrint('[Online] Client error ${response.statusCode}: not found or bad request for "$word"');
+      } else {
+        debugPrint('[Online] Bad status code: ${response.statusCode}');
+      }
     } on DioException catch (e) {
-      debugPrint('[Online] DioException: ${e.message}');
+      if (e.response != null && (e.response!.statusCode ?? 0) >= 400) {
+        debugPrint(
+            '[Online] HTTP error ${e.response!.statusCode}: ${e.response!.statusMessage}');
+      } else {
+        debugPrint('[Online] DioException: ${e.message}');
+      }
     } catch (e) {
       debugPrint('[Online] Unexpected error: $e');
     }
@@ -187,6 +208,46 @@ class OnlineDictionaryService {
     }
 
     return null;
+  }
+
+  /// Extracts pinyin-annotated examples from the bkrs.info page HTML.
+  ///
+  /// Scans all `class="ex"` blocks for `[pinyin]` annotations (with tone
+  /// marks) and pairs them with the preceding Chinese text. Returns an empty
+  /// list if no annotated examples are found.
+  List<PinyinExample> _parseExamplePinyin(String html) {
+    final examples = <PinyinExample>[];
+    try {
+      // Pinyin syllables with tone marks (U+0100–U+024F covers all diacritical
+      // letters used in pinyin: ā á ǎ à ē é ě è ī í ǐ ì ō ó ǒ ò ū ú ǔ ù ǖ ǘ ǚ ǜ
+      // plus ă ĕ ĭ ǒ ŏ ů for rare forms).
+      final pinyinPattern =
+          RegExp(r'\[([^\[\]]*[\u0100-\u024f][^\[\]]*)\]');
+
+      for (final exEl
+          in html_parser.parse(html).querySelectorAll('div.ex')) {
+        final text = exEl.text.trim();
+        if (text.isEmpty) continue;
+
+        final pinyinMatch = pinyinPattern.firstMatch(text);
+        if (pinyinMatch == null) continue;
+
+        // The Chinese text is everything before the first `[pinyin]`.
+        final chinese = text.substring(0, pinyinMatch.start).trim();
+        if (chinese.isEmpty) continue;
+
+        // Only keep entries that actually contain Chinese characters.
+        if (!RegExp(r'[\u4e00-\u9fff]').hasMatch(chinese)) continue;
+
+        examples.add(PinyinExample(
+          chinese: chinese,
+          pinyin: pinyinMatch.group(1)!.trim(),
+        ));
+      }
+    } catch (e) {
+      debugPrint('[Online] Failed to parse example pinyin: $e');
+    }
+    return examples;
   }
 
   /// Check if text looks like actual translation content,

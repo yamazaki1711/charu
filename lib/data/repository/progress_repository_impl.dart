@@ -141,6 +141,8 @@ class ProgressRepositoryImpl implements IProgressRepository {
   @override
   Future<void> updateStreak() async {
     try {
+      // Ensure the local row exists (update by id = 1 matches nothing
+      // on a fresh install, silently breaking the streak).
       final db = await _dbHelper.userDatabase;
       final today = _formatDate(DateTime.now());
       final streakData = await getStreakData();
@@ -174,15 +176,20 @@ class ProgressRepositoryImpl implements IProgressRepository {
         maxStreak = newStreak;
       }
 
-      await db.update(
-        'streak_data',
-        {
-          'current_streak': newStreak,
-          'max_streak': maxStreak,
-          'last_active_date': today,
-          'updated_at': DateTime.now().toIso8601String(),
-        },
-        where: 'id = 1',
+      // Insert-or-update: the streak row may not exist on a fresh
+      // install (updateStreak used to silently no-op in that case).
+      await db.rawUpdate(
+        '''
+        INSERT INTO streak_data (id, current_streak, max_streak,
+                                 last_active_date, updated_at)
+        VALUES (1, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          current_streak = excluded.current_streak,
+          max_streak = excluded.max_streak,
+          last_active_date = excluded.last_active_date,
+          updated_at = excluded.updated_at
+        ''',
+        [newStreak, maxStreak, today, DateTime.now().toIso8601String()],
       );
     } catch (e) {
       debugPrint('❌ Update streak error: $e');
@@ -269,7 +276,7 @@ class ProgressRepositoryImpl implements IProgressRepository {
 
       await db.rawUpdate(
         '''
-        INSERT INTO daily_stats (date, words_saved) 
+        INSERT INTO daily_stats (date, words_saved)
         VALUES (?, ?)
         ON CONFLICT(date) DO UPDATE SET words_saved = words_saved + ?
         ''',
@@ -277,6 +284,8 @@ class ProgressRepositoryImpl implements IProgressRepository {
       );
     } catch (e) {
       debugPrint('❌ Increment words saved error: $e');
+      // Propagate to the UI (dictionary popup shows a snackbar).
+      rethrow;
     }
   }
 
@@ -288,7 +297,7 @@ class ProgressRepositoryImpl implements IProgressRepository {
 
       await db.rawUpdate(
         '''
-        INSERT INTO daily_stats (date, articles_read) 
+        INSERT INTO daily_stats (date, articles_read)
         VALUES (?, ?)
         ON CONFLICT(date) DO UPDATE SET articles_read = articles_read + ?
         ''',
@@ -296,6 +305,9 @@ class ProgressRepositoryImpl implements IProgressRepository {
       );
     } catch (e) {
       debugPrint('❌ Increment articles read error: $e');
+      // The progress screen's refresh rethrows as an AsyncError, so the
+      // user sees the failure banner (task #5).
+      rethrow;
     }
   }
 
@@ -307,7 +319,7 @@ class ProgressRepositoryImpl implements IProgressRepository {
 
       await db.rawUpdate(
         '''
-        INSERT INTO daily_stats (date, reading_minutes) 
+        INSERT INTO daily_stats (date, reading_minutes)
         VALUES (?, ?)
         ON CONFLICT(date) DO UPDATE SET reading_minutes = reading_minutes + ?
         ''',
@@ -315,6 +327,9 @@ class ProgressRepositoryImpl implements IProgressRepository {
       );
     } catch (e) {
       debugPrint('❌ Add reading minutes error: $e');
+      // Rejected: rethrowing here would tear down the reader on every
+      // background tick. Errors stay visible in the Progress screen via
+      // progressSummaryProvider (task #5).
     }
   }
 

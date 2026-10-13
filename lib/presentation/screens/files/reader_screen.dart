@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -19,15 +21,46 @@ class ReaderScreen extends ConsumerStatefulWidget {
   ConsumerState<ReaderScreen> createState() => _ReaderScreenState();
 }
 
-class _ReaderScreenState extends ConsumerState<ReaderScreen> {
+class _ReaderScreenState extends ConsumerState<ReaderScreen>
+    with WidgetsBindingObserver {
   String? _content;
   bool _isLoading = true;
   String? _error;
 
+  Timer? _sessionTick;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Add ~1 reading minute every 60 seconds of active reading.
+    _sessionTick = Timer.periodic(const Duration(seconds: 60), (_) {
+      ref.read(addReadingMinutesUseCaseProvider).call(minutes: 1);
+      ref.read(updateStreakUseCaseProvider).call();
+    });
     _loadFile();
+  }
+
+  @override
+  void dispose() {
+    _sessionTick?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Pause/resume the reading-minute ticker with the app lifecycle.
+    if (state == AppLifecycleState.resumed) {
+      _sessionTick ??= Timer.periodic(const Duration(seconds: 60), (_) {
+        ref.read(addReadingMinutesUseCaseProvider).call(minutes: 1);
+        ref.read(updateStreakUseCaseProvider).call();
+      });
+    } else {
+      _sessionTick?.cancel();
+      _sessionTick = null;
+    }
   }
 
   Future<void> _loadFile() async {
@@ -131,7 +164,17 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
       );
     }
 
-    return SegmentedTextDisplay(text: _content!);
+    // Constrain content width on wide screens (tablet) so Chinese text
+    // lines don't stretch across the full screen.
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 700),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SegmentedTextDisplay(text: _content!),
+        ),
+      ),
+    );
   }
 
   Future<void> _addBookmark() async {

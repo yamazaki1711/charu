@@ -67,3 +67,36 @@ class GetStatsForRangeUseCase {
     return await _repository.getStatsForRange(start, end);
   }
 }
+
+/// Use case for incrementing the saved-words counter (call after saveWord)
+class IncrementWordsSavedUseCase {
+  final IProgressRepository _repository;
+
+  IncrementWordsSavedUseCase(this._repository);
+
+  Future<void> call({int count = 1}) async {
+    await _repository.incrementWordsSaved(count);
+  }
+}
+
+/// Use case for incrementing the articles-read counter (call on article open)
+class IncrementArticlesReadUseCase {
+  final IProgressRepository _repository;
+
+  IncrementArticlesReadUseCase(this._repository);
+
+  Future<void> call({int count = 1}) async {
+    await _repository.incrementArticlesRead(count);
+  }
+}
+
+/// Use case for adding reading minutes (call after a reading session)
+class AddReadingMinutesUseCase {
+  final IProgressRepository _repository;
+
+  AddReadingMinutesUseCase(this._repository);
+
+  Future<void> call({int minutes = 1}) async {
+    await _repository.addReadingMinutes(minutes);
+  }
+}

@@ -97,11 +97,15 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
     final file = await openFile();
 
     if (file != null && mounted) {
+      // Refresh the recent-files list so the newly opened file appears.
+      ref.invalidate(recentFilesProvider);
       _openFileForReading(file);
     }
   }
 
   void _openFileForReading(LocalFile file) {
+    // Update last-opened in history and refresh the list on the way back.
+    ref.invalidate(recentFilesProvider);
     context.push('/files/reader', extra: {'path': file.path, 'name': file.name});
   }
 

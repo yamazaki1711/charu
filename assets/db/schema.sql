@@ -150,11 +150,13 @@ CREATE TABLE IF NOT EXISTS news_sources (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Добавление встроенных источников по умолчанию
-INSERT INTO news_sources (name, url, type, enabled) VALUES
-    ('Baidu Baijiahao', 'https://baijiahao.baidu.com', 'html', 1),
-    ('Sina News', 'https://news.sina.com.cn', 'rss', 1),
-    ("People's Daily", 'http://en.people.cn', 'rss', 1);
+-- Добавление встроенных источников по умолчанию.
+-- Baidu/Sina/People's Daily — тестовые (enabled = 0); рабочий источник: 中国生活.
+INSERT INTO news_sources (id, name, url, type, enabled) VALUES
+    (1, 'Baidu Baijiahao', 'https://baijiahao.baidu.com', 'html', 0),
+    (2, 'Sina News', 'https://news.sina.com.cn', 'rss', 0),
+    (3, "People's Daily", 'http://en.people.cn', 'rss', 0),
+    (4, '中国生活', 'https://www.chinanews.com.cn/rss/life.xml', 'rss', 1);
 
 -- ============================================================================
 -- 9. ИСТОРИЯ ЧТЕНИЯ ФАЙЛОВ

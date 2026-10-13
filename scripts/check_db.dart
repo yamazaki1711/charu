@@ -3,7 +3,7 @@ import 'package:path/path.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 void main() async {
-  final dbPath = join(Directory.current.path, 'assets', 'db', 'charu_dict.db');
+  final dbPath = join(Directory.current.path, 'assets', 'db', 'charu_bkrs.db');
   
   if (!await File(dbPath).exists()) {
     print('❌ БД не найдена!');

@@ -1,3 +1,11 @@
+/// A pinyin-annotated example sentence from an online dictionary entry.
+class PinyinExample {
+  final String chinese;
+  final String? pinyin;
+
+  const PinyinExample({required this.chinese, this.pinyin});
+}
+
 /// Domain model representing a word lookup result based on the 5-layer cascade.
 class DictionaryResult {
   final String chineseWord;
@@ -6,6 +14,7 @@ class DictionaryResult {
   final String source; // 'bkrs', 'toponym', 'person', 'online', 'fallback'
   final String? icon; // '🗺️', '👤', '🌐', '❓' or null
   final Map<String, dynamic>? metadata;
+  final List<PinyinExample> examples; // pinyin-annotated examples (online BKRS)
 
   const DictionaryResult({
     required this.chineseWord,
@@ -14,6 +23,7 @@ class DictionaryResult {
     required this.source,
     this.icon,
     this.metadata,
+    this.examples = const [],
   });
 
   bool get isFallback => source == 'fallback';

@@ -34,7 +34,7 @@ flutter pub get
 dart run scripts/generate_test_db.dart
 ```
 
-Это создаст файл `assets/db/charu_dict.db` с демонстрационными данными.
+Это создаст файл `assets/db/charu_bkrs.db` с демонстрационными данными.
 
 ---
 
@@ -55,10 +55,10 @@ dart run scripts/generate_test_db.dart
 
 ```bash
 # Создание БД
-sqlite3 assets/db/charu_dict.db < schema.sql
+sqlite3 assets/db/charu_bkrs.db < schema.sql
 
 # Или вручную
-sqlite3 assets/db/charu_dict.db
+sqlite3 assets/db/charu_bkrs.db
 sqlite> .read schema.sql
 sqlite> .quit
 ```
@@ -90,7 +90,7 @@ INSERT INTO dictionary (simplified, traditional, pinyin, translation, examples) 
 
 Выполните:
 ```bash
-sqlite3 assets/db/charu_dict.db < scripts/add_words.sql
+sqlite3 assets/db/charu_bkrs.db < scripts/add_words.sql
 ```
 
 ### Через Dart-скрипт
@@ -210,13 +210,13 @@ flutter build ios --release
 
 ```bash
 # Просмотр БД
-sqlite3 assets/db/charu_dict.db
+sqlite3 assets/db/charu_bkrs.db
 
 # Экспорт структуры
-sqlite3 assets/db/charu_dict.db .schema
+sqlite3 assets/db/charu_bkrs.db .schema
 
 # Экспорт данных
-sqlite3 assets/db/charu_dict.db "SELECT * FROM dictionary LIMIT 10;"
+sqlite3 assets/db/charu_bkrs.db "SELECT * FROM dictionary LIMIT 10;"
 ```
 
 ---
@@ -244,7 +244,7 @@ logger.e('Error message');
 
 ```bash
 # Android
-adb pull /data/data/com.example.charu/databases/charu_dict.db
+adb pull /data/data/com.example.charu/databases/charu_bkrs.db
 
 # iOS (требуется Xcode)
 # Device Manager → Downloads → App Data
@@ -306,7 +306,7 @@ adb pull /data/data/com.example.charu/databases/charu_dict.db
 
 A: Удалите старую БД и перегенерируйте:
 ```bash
-rm assets/db/charu_dict.db
+rm assets/db/charu_bkrs.db
 dart run scripts/generate_test_db.dart
 ```
 
