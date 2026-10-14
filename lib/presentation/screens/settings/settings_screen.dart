@@ -93,7 +93,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               return _SwitchTile(
                 title: 'Пиньинь только по тапу',
                 subtitle: 'Защита от «слепого чтения»: строка чистая, '
-                    'пиньинь появляется при нажатии на слово',
+                    'пиньинь — в карточке слова при нажатии',
                 value: tapOnly,
                 onChanged: (v) =>
                     ref.read(pinyinTapOnlyProvider.notifier).set(v),

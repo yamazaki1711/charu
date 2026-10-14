@@ -105,13 +105,6 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
   final Map<String, String> _pinyinCache = {};
   final List<TapGestureRecognizer> _recognizers = [];
 
-  /// Words whose pinyin has been revealed by tapping, when
-  /// [pinyinTapOnlyProvider] is active. Keyed by word text (not occurrence
-  /// index): once revealed, every instance of that word in this article
-  /// stays revealed — simpler than per-occurrence tracking and still
-  /// discourages blind-reading on first encounter.
-  final Set<String> _revealedWords = {};
-
   @override
   void initState() {
     super.initState();
@@ -141,7 +134,6 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
 
   void _segmentText() {
     setState(() {
-      _revealedWords.clear();
       _segments = segmentChinese(widget.text);
       // Pre-fetch pinyin for all Chinese segments (cached).
       for (final word in _segments) {
@@ -189,14 +181,8 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
       }
 
       final isKnown = knownWords.contains(word);
-      final revealed = _revealedWords.contains(word);
 
-      final recognizer = TapGestureRecognizer()..onTap = () {
-        if (tapOnlyPinyin && !revealed) {
-          setState(() => _revealedWords.add(word));
-        }
-        _onWordTapped(word);
-      };
+      final recognizer = TapGestureRecognizer()..onTap = () => _onWordTapped(word);
       _recognizers.add(recognizer);
 
       // Already-known (saved) words render plain — only new/unknown words
@@ -210,7 +196,16 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
               decorationStyle: TextDecorationStyle.dotted,
             );
 
-      final showPinyinForWord = showPinyin && (!tapOnlyPinyin || revealed);
+      // "Tap-only" mode intentionally does NOT reveal pinyin inline: a
+      // Chinese word with pinyin is a taller inline block than its plain
+      // neighbors, and Flutter has no notion of "ruby text" that keeps
+      // mixed plain/annotated runs level on one line — toggling a single
+      // word's pinyin on would visibly bump that word (and everything
+      // after it on the line) out of alignment. The dictionary popup
+      // (opened by every tap, see _onWordTapped) already shows the
+      // pinyin prominently, so tap-only mode simply keeps the inline text
+      // clean and relies on that popup as the "reveal".
+      final showPinyinForWord = showPinyin && !tapOnlyPinyin;
 
       if (!showPinyinForWord) {
         spans.add(TextSpan(text: word, style: wordStyle, recognizer: recognizer));
@@ -223,45 +218,45 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
         continue;
       }
 
-      // Ruby-style annotation: pinyin floats above the word via
-      // Stack + Positioned(top: negative) with clipBehavior: Clip.none,
-      // NOT a Column. A Column's reported size includes the pinyin's
-      // height, which (now that pinyin sits above rather than below)
-      // inflates the WidgetSpan's ascent — since WidgetSpan falls back to
-      // bottom-of-box baseline alignment for children that don't report a
-      // real text baseline, that extra ascent desyncs this run from plain
-      // TextSpan neighbors on the same line (digits/punctuation visibly
-      // "floating" relative to the hanzi). Overflow-painting the pinyin
-      // outside the Stack's layout box keeps the reported box == the
-      // word's own size, so the word baseline-aligns exactly like plain
-      // text, and only the pinyin paints into the otherwise-empty space
-      // above the line.
+      // Ruby-style annotation: WidgetSpan with a Column(min) — pinyin
+      // above the word (standard ruby/furigana convention). Deliberately
+      // NOT using PlaceholderAlignment.baseline: a Column doesn't report a
+      // real text baseline, so Flutter falls back to aligning the BOTTOM
+      // of the whole column to the line's baseline — meaning the ascent
+      // this run contributes to the line is the Column's full height
+      // (pinyin + spacing + word). That's fine for THIS run, but a
+      // previous attempt at overflow-painting the pinyin outside the
+      // layout box (to avoid that extra ascent) caused the pinyin to
+      // paint into the line above instead, since nothing reserves room
+      // for it there. PlaceholderAlignment.middle sidesteps baseline
+      // fallback entirely — Flutter centers the whole annotated unit
+      // within the line's own box — which stays visually consistent for
+      // CJK text (fullwidth characters are already centered in their own
+      // em-box, unlike Latin baseline-anchored glyphs) and, crucially,
+      // the Column's full height is honestly reserved by the layout
+      // engine, so consecutive lines can never collide regardless of how
+      // many words on a line carry annotations.
       spans.add(WidgetSpan(
-        alignment: PlaceholderAlignment.baseline,
-        baseline: TextBaseline.alphabetic,
+        alignment: PlaceholderAlignment.middle,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () => _onWordTapped(word),
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.bottomCenter,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(word, style: wordStyle),
-              Positioned(
-                left: 0,
-                right: 0,
-                top: -13,
-                child: Text(
-                  pinyin,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                    height: 1.0,
-                    letterSpacing: 0.3,
-                  ),
+              Text(
+                pinyin,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                  height: 1.0,
+                  letterSpacing: 0.3,
                 ),
               ),
+              const SizedBox(height: 1),
+              Text(word, style: wordStyle),
             ],
           ),
         ),
