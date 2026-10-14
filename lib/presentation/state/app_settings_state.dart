@@ -68,6 +68,37 @@ class ShowPinyinNotifier extends StateNotifier<bool> {
   }
 }
 
+// ─── Pinyin reveal mode (always vs. tap-to-reveal) ──────────────────────────
+
+/// Provider for "show pinyin only on tap" (default: OFF — always shown).
+///
+/// When ON, ambient pinyin annotations are hidden in the reader; tapping a
+/// word reveals its pinyin (in addition to opening the dictionary popup),
+/// which discourages "blind reading" (eyes skipping straight to the
+/// romanization instead of recognizing the character). Only meaningful
+/// while [showPinyinProvider] is also true.
+final pinyinTapOnlyProvider =
+    StateNotifierProvider<PinyinTapOnlyNotifier, bool>((ref) {
+  return PinyinTapOnlyNotifier();
+});
+
+class PinyinTapOnlyNotifier extends StateNotifier<bool> {
+  PinyinTapOnlyNotifier() : super(false) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getBool('pinyin_tap_only') ?? false;
+  }
+
+  Future<void> set(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('pinyin_tap_only', value);
+    state = value;
+  }
+}
+
 // ─── Reader font size ────────────────────────────────────────────────────────
 
 /// Provider for the reader font size setting (default: 18, range 14–24).

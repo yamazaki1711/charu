@@ -11,10 +11,16 @@ class ReaderScreen extends ConsumerStatefulWidget {
   final String filePath;
   final String fileName;
 
+  /// When set, the reader shows this text directly instead of reading
+  /// [filePath] from disk — used for the bundled demo story (no real file,
+  /// so position/bookmark persistence is skipped).
+  final String? demoText;
+
   const ReaderScreen({
     super.key,
     required this.filePath,
     required this.fileName,
+    this.demoText,
   });
 
   @override
@@ -75,6 +81,14 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
       _isLoading = true;
     });
 
+    if (widget.demoText != null) {
+      setState(() {
+        _content = widget.demoText;
+        _isLoading = false;
+      });
+      return;
+    }
+
     try {
       final readFile = ref.read(readFileContentUseCaseProvider);
       final content = await readFile(widget.filePath);
@@ -110,6 +124,7 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
   /// persists it (position is stored in characters, not pixels, so it
   /// stays meaningful across font-size and screen-size changes).
   void _savePosition() {
+    if (widget.demoText != null) return; // no real file to persist against
     final content = _content;
     if (content == null || content.isEmpty) return;
     if (!_scrollController.hasClients) return;
@@ -219,6 +234,14 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
   }
 
   Future<void> _addBookmark() async {
+    if (widget.demoText != null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Закладки недоступны в демо-тексте')),
+        );
+      }
+      return;
+    }
     final content = _content;
     final position = content != null && content.isNotEmpty
         ? (() {

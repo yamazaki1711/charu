@@ -56,9 +56,9 @@ final saveWordUseCaseProvider = Provider<SaveWordUseCase>((ref) {
 // -----------------------------------------------------------------------------
 
 final newsRepositoryProvider = Provider<INewsRepository>((ref) {
-  final repo = NewsRepositoryImpl();
-  repo.configureSources(ref.read(newsSourcesRepositoryProvider));
-  return repo;
+  return NewsRepositoryImpl(
+    sourcesRepository: ref.watch(newsSourcesRepositoryProvider),
+  );
 });
 
 final getLatestNewsUseCaseProvider = Provider<GetLatestNewsUseCase>((ref) {
@@ -181,4 +181,20 @@ final addReadingMinutesUseCaseProvider = Provider<AddReadingMinutesUseCase>(
 /// UseCase provider for resetting all progress data.
 final resetProgressUseCaseProvider = Provider<ResetProgressUseCase>((ref) {
   return ResetProgressUseCase(ref.watch(progressRepositoryProvider));
+});
+
+/// UseCase provider for the saved-words set (reader known-word highlighting).
+final getSavedWordsSetUseCaseProvider = Provider<GetSavedWordsSetUseCase>((ref) {
+  return GetSavedWordsSetUseCase(ref.watch(progressRepositoryProvider));
+});
+
+/// UseCase provider for words due for spaced-repetition review.
+final getWordsDueForReviewUseCaseProvider =
+    Provider<GetWordsDueForReviewUseCase>((ref) {
+  return GetWordsDueForReviewUseCase(ref.watch(progressRepositoryProvider));
+});
+
+/// UseCase provider for recording a review outcome.
+final markWordReviewedUseCaseProvider = Provider<MarkWordReviewedUseCase>((ref) {
+  return MarkWordReviewedUseCase(ref.watch(progressRepositoryProvider));
 });

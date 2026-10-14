@@ -7,7 +7,8 @@ import 'package:jieba_flutter/analysis/jieba_segmenter.dart';
 
 import '../../di/di.dart';
 import '../state/app_settings_state.dart'
-    show showPinyinProvider, fontSizeProvider;
+    show showPinyinProvider, pinyinTapOnlyProvider, fontSizeProvider;
+import '../state/progress_state.dart' show savedWordsSetProvider;
 import 'dictionary_popup.dart';
 import 'pinyin_helper.dart';
 
@@ -104,6 +105,13 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
   final Map<String, String> _pinyinCache = {};
   final List<TapGestureRecognizer> _recognizers = [];
 
+  /// Words whose pinyin has been revealed by tapping, when
+  /// [pinyinTapOnlyProvider] is active. Keyed by word text (not occurrence
+  /// index): once revealed, every instance of that word in this article
+  /// stays revealed — simpler than per-occurrence tracking and still
+  /// discourages blind-reading on first encounter.
+  final Set<String> _revealedWords = {};
+
   @override
   void initState() {
     super.initState();
@@ -133,6 +141,7 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
 
   void _segmentText() {
     setState(() {
+      _revealedWords.clear();
       _segments = segmentChinese(widget.text);
       // Pre-fetch pinyin for all Chinese segments (cached).
       for (final word in _segments) {
@@ -155,6 +164,8 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final showPinyin = ref.watch(showPinyinProvider);
+    final tapOnlyPinyin = ref.watch(pinyinTapOnlyProvider);
+    final knownWords = ref.watch(savedWordsSetProvider).valueOrNull ?? const <String>{};
     final fontSize = ref.watch(fontSizeProvider).toDouble();
     final textStyle = TextStyle(
       color: theme.colorScheme.onSurface,
@@ -177,19 +188,31 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
         continue;
       }
 
+      final isKnown = knownWords.contains(word);
+      final revealed = _revealedWords.contains(word);
+
       final recognizer = TapGestureRecognizer()..onTap = () {
+        if (tapOnlyPinyin && !revealed) {
+          setState(() => _revealedWords.add(word));
+        }
         _onWordTapped(word);
       };
       _recognizers.add(recognizer);
 
-      final wordStyle = textStyle.copyWith(
-        decoration: TextDecoration.underline,
-        decorationColor: theme.colorScheme.primary.withValues(alpha: 0.4),
-        decorationStyle: TextDecorationStyle.dotted,
-      );
+      // Already-known (saved) words render plain — only new/unknown words
+      // get the dotted underline, so a glance at the page shows at a
+      // glance how much of the text is still unfamiliar (LingQ-style).
+      final wordStyle = isKnown
+          ? textStyle.copyWith(color: textStyle.color?.withValues(alpha: 0.85))
+          : textStyle.copyWith(
+              decoration: TextDecoration.underline,
+              decorationColor: theme.colorScheme.primary.withValues(alpha: 0.4),
+              decorationStyle: TextDecorationStyle.dotted,
+            );
 
-      if (!showPinyin) {
-        // Clean TextSpan mode (pinyin toggle off).
+      final showPinyinForWord = showPinyin && (!tapOnlyPinyin || revealed);
+
+      if (!showPinyinForWord) {
         spans.add(TextSpan(text: word, style: wordStyle, recognizer: recognizer));
         continue;
       }
@@ -200,31 +223,43 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
         continue;
       }
 
-      // Ruby-style annotation: WidgetSpan with a Column(min) —
-      // word on top, pinyin below (small, grey, centered).
-      // PlaceholderAlignment.baseline + TextBaseline.alphabetic aligns the
-      // word's baseline with the surrounding Latin/punctuation text so
-      // inline Latin (e.g. "get" in "一起get科普") stays on the word line,
-      // not the pinyin line.
+      // Ruby-style annotation: pinyin floats above the word via
+      // Stack + Positioned(top: negative) with clipBehavior: Clip.none,
+      // NOT a Column. A Column's reported size includes the pinyin's
+      // height, which (now that pinyin sits above rather than below)
+      // inflates the WidgetSpan's ascent — since WidgetSpan falls back to
+      // bottom-of-box baseline alignment for children that don't report a
+      // real text baseline, that extra ascent desyncs this run from plain
+      // TextSpan neighbors on the same line (digits/punctuation visibly
+      // "floating" relative to the hanzi). Overflow-painting the pinyin
+      // outside the Stack's layout box keeps the reported box == the
+      // word's own size, so the word baseline-aligns exactly like plain
+      // text, and only the pinyin paints into the otherwise-empty space
+      // above the line.
       spans.add(WidgetSpan(
         alignment: PlaceholderAlignment.baseline,
         baseline: TextBaseline.alphabetic,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () => _onWordTapped(word),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.bottomCenter,
             children: [
               Text(word, style: wordStyle),
-              const SizedBox(height: 1),
-              Text(
-                pinyin,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                  height: 1.0,
-                  letterSpacing: 0.3,
+              Positioned(
+                left: 0,
+                right: 0,
+                top: -13,
+                child: Text(
+                  pinyin,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                    height: 1.0,
+                    letterSpacing: 0.3,
+                  ),
                 ),
               ),
             ],

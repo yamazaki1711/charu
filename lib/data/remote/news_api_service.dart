@@ -163,8 +163,11 @@ class NewsApiService {
   }
 
   String _cleanText(String text) {
-    // Remove HTML tags
-    return text
+    // Remove script/style blocks (tag AND content) first — RSS <description>
+    // fields from some sources embed a video-player <script> inline, and
+    // stripping only tag markup would leave the raw JS flowing through as
+    // plain summary text.
+    return _stripNonContentBlocks(text)
         .replaceAll(RegExp(r'<[^>]*>'), '')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
@@ -191,8 +194,9 @@ class NewsApiService {
     return [];
   }
 
-  List<NewsArticle> _parseHtml(String html, String sourceName, String baseUrl) {
+  List<NewsArticle> _parseHtml(String rawHtml, String sourceName, String baseUrl) {
     final articles = <NewsArticle>[];
+    final html = _stripNonContentBlocks(rawHtml);
 
     // Simple regex-based extraction for titles
     final titleRegex = RegExp('<a[^>]*title=["\']([^"\']+)["\'][^>]*>([^<]*)</a>', caseSensitive: false);
@@ -257,8 +261,21 @@ class NewsApiService {
     return article;
   }
 
-  NewsArticle _parseArticle(String html, NewsArticle article) {
+  /// Removes `<script>`, `<style>` and `<head>` blocks (tag AND content —
+  /// unlike [_cleanText], which only strips tag markup and would otherwise
+  /// leave embedded JS/CSS source flowing through as plain article text,
+  /// e.g. a people.com.cn video-player `showPlayer({...})` call landing
+  /// inside a `<p>` and rendering verbatim as "Chinese text" to the reader).
+  String _stripNonContentBlocks(String html) {
+    return html.replaceAll(
+      RegExp(r'<(script|style|head)[^>]*>[\s\S]*?</\1>', caseSensitive: false),
+      '',
+    );
+  }
+
+  NewsArticle _parseArticle(String rawHtml, NewsArticle article) {
     String content = '';
+    final html = _stripNonContentBlocks(rawHtml);
 
     // Try to extract content between paragraph tags
     final pRegex = RegExp(r'<p[^>]*>([\s\S]*?)</p>', caseSensitive: false);

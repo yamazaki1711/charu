@@ -7,17 +7,25 @@ import 'news_sources_repository.dart';
 
 class NewsRepositoryImpl implements INewsRepository {
   final NewsApiService _apiService;
+  final NewsSourcesRepository _sourcesRepository;
   List<NewsArticle>? _cachedArticles;
 
-  NewsRepositoryImpl({NewsApiService? apiService})
-      : _apiService = apiService ?? NewsApiService();
+  /// [sourcesRepository] must be the same instance the Settings screen
+  /// toggles (the Riverpod singleton) — a fresh `NewsSourcesRepository()`
+  /// here would always see the untouched default `enabled` column from the
+  /// read-only asset DB, silently ignoring every user toggle.
+  NewsRepositoryImpl({
+    NewsApiService? apiService,
+    NewsSourcesRepository? sourcesRepository,
+  })  : _apiService = apiService ?? NewsApiService(),
+        _sourcesRepository = sourcesRepository ?? NewsSourcesRepository();
 
-  /// Инициализация источников из news_sources (через
-  /// [NewsSourcesRepository]) — RSS-источники передаются в API-сервис.
-  /// На web-платформе и при ошибках DB остаётся дефолтный набор сервиса.
-  Future<void> configureSources(NewsSourcesRepository sourcesRepository) async {
+  /// Применяет текущее состояние источников из [_sourcesRepository] к
+  /// API-сервису. Вызывается перед каждым fetch, чтобы отражать тумблеры
+  /// из Настроек, переключённые после создания репозитория.
+  Future<void> _applySourceConfig() async {
     try {
-      final enabled = await sourcesRepository.getEnabledSources();
+      final enabled = await _sourcesRepository.getEnabledSources();
       if (enabled.isEmpty) return;
       _apiService.configureSources(
         enabled
@@ -35,9 +43,7 @@ class NewsRepositoryImpl implements INewsRepository {
 
   @override
   Future<List<NewsArticle>> getLatestNews() async {
-    // Гарантия: источники из news_sources применяются ДО первого fetch
-    // (не полагаемся на то, что внешний init уже отработал).
-    await configureSources(NewsSourcesRepository());
+    await _applySourceConfig();
     try {
       final articles = await _apiService.fetchLatestNews();
       if (articles.isNotEmpty) {

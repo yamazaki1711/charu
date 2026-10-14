@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../domain/model/file_models.dart';
 import '../../../di/di.dart';
 import '../../state/file_state.dart';
+import '../../widgets/demo_story.dart';
 
 /// 📁 Files screen — local file browser and reading history.
 class FilesScreen extends ConsumerStatefulWidget {
@@ -47,31 +48,81 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
 
   Widget _buildEmptyState(ThemeData theme) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.folder_open,
-            size: 80,
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Нет открытых файлов',
-            style: TextStyle(
-              fontSize: 18,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.folder_open,
+              size: 80,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.3),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Нажмите "Открыть файл" чтобы начать чтение',
-            style: TextStyle(
-              fontSize: 14,
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+            const SizedBox(height: 24),
+            Text(
+              'Нет открытых файлов',
+              style: TextStyle(
+                fontSize: 18,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              'Нажмите "Открыть файл" чтобы начать чтение',
+              style: TextStyle(
+                fontSize: 14,
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+              ),
+            ),
+            const SizedBox(height: 32),
+            InkWell(
+              onTap: () => context.push(
+                '/files/reader',
+                extra: {
+                  'path': 'demo://yugong-yishan',
+                  'name': '$kDemoStoryTitle (демо)',
+                  'demoText': kDemoStoryText,
+                },
+              ),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.auto_stories, color: theme.colorScheme.onPrimaryContainer),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Попробовать на примере',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                          Text(
+                            '$kDemoStoryTitle — китайская притча',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right, color: theme.colorScheme.onPrimaryContainer),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

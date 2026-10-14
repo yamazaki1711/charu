@@ -5,6 +5,7 @@ import '../screens/news/article_screen.dart';
 import '../screens/files/files_screen.dart';
 import '../screens/files/reader_screen.dart';
 import '../screens/progress/progress_screen.dart';
+import '../screens/progress/review_screen.dart';
 import '../screens/settings/settings_screen.dart';
 import 'app_shell.dart';
 
@@ -47,6 +48,7 @@ final GoRouter appRouter = GoRouter(
                   child: ReaderScreen(
                     filePath: args?['path'] ?? '',
                     fileName: args?['name'] ?? 'Файл',
+                    demoText: args?['demoText'] as String?,
                   ),
                 );
               },
@@ -57,6 +59,13 @@ final GoRouter appRouter = GoRouter(
           path: '/progress',
           pageBuilder: (context, state) =>
               const NoTransitionPage(child: ProgressScreen()),
+          routes: [
+            GoRoute(
+              path: 'review',
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: ReviewScreen()),
+            ),
+          ],
         ),
         GoRoute(
           path: '/settings',

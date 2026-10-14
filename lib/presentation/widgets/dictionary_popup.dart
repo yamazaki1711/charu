@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/model/dictionary_models.dart';
 import '../../di/di.dart';
+import '../state/progress_state.dart' show savedWordsSetProvider;
 import 'pinyin_helper.dart';
 
 class DictionaryPopup extends ConsumerWidget {
@@ -262,6 +263,7 @@ class DictionaryPopup extends ConsumerWidget {
                       .read(incrementWordsSavedUseCaseProvider)
                       .call(count: 1);
                   await ref.read(updateStreakUseCaseProvider).call();
+                  ref.invalidate(savedWordsSetProvider);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Слово сохранено в словарь')),

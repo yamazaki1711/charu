@@ -85,6 +85,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               );
             },
           ),
+          Consumer(
+            builder: (context, ref, _) {
+              final showPinyin = ref.watch(showPinyinProvider);
+              if (!showPinyin) return const SizedBox.shrink();
+              final tapOnly = ref.watch(pinyinTapOnlyProvider);
+              return _SwitchTile(
+                title: 'Пиньинь только по тапу',
+                subtitle: 'Защита от «слепого чтения»: строка чистая, '
+                    'пиньинь появляется при нажатии на слово',
+                value: tapOnly,
+                onChanged: (v) =>
+                    ref.read(pinyinTapOnlyProvider.notifier).set(v),
+                icon: Icons.visibility_off_outlined,
+              );
+            },
+          ),
           const SizedBox(height: 24),
 
           // Notifications Section
@@ -150,7 +166,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             subtitle: '0.1.0',
           ),
           _InfoTile(
-            title: 'CHARU',
+            title: 'Kira',
             subtitle: 'Читатель китайских текстов с интегрированным словарём',
           ),
           const SizedBox(height: 32),
@@ -429,7 +445,7 @@ class _NewsSourcesList extends ConsumerWidget {
         for (final source in sources)
           Card(
             child: SwitchListTile(
-              secondary: const Icon(Icons.rss_feed),
+              secondary: _SourceAvatar(name: source.name),
               title: Text(source.name),
               subtitle: Text(source.url),
               value: source.enabled,
@@ -441,6 +457,41 @@ class _NewsSourcesList extends ConsumerWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Colored circular initial avatar for a news source — no real favicons are
+/// fetched (offline-first, no extra network dependency), but a stable
+/// per-source color makes the source list visually distinguishable instead
+/// of every row sharing one identical RSS icon.
+class _SourceAvatar extends StatelessWidget {
+  final String name;
+
+  const _SourceAvatar({required this.name});
+
+  static const _palette = [
+    Color(0xFFCC2B2B),
+    Color(0xFF2E8B57),
+    Color(0xFF3B6FB6),
+    Color(0xFFD4AF37),
+    Color(0xFF8E5BC0),
+    Color(0xFFD97A3C),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final trimmed = name.trim();
+    final initial = trimmed.isEmpty ? '?' : trimmed.substring(0, 1);
+    final color = _palette[name.hashCode.abs() % _palette.length];
+
+    return CircleAvatar(
+      backgroundColor: color.withValues(alpha: 0.15),
+      foregroundColor: color,
+      child: Text(
+        initial,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
     );
   }
 }

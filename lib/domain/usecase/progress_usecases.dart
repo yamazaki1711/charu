@@ -111,3 +111,36 @@ class ResetProgressUseCase {
     await _repository.resetProgress();
   }
 }
+
+/// Use case for the set of saved words (reader "known word" highlighting).
+class GetSavedWordsSetUseCase {
+  final IProgressRepository _repository;
+
+  GetSavedWordsSetUseCase(this._repository);
+
+  Future<Set<String>> call() async {
+    return await _repository.getSavedWordsSet();
+  }
+}
+
+/// Use case for fetching words due for spaced-repetition review.
+class GetWordsDueForReviewUseCase {
+  final IProgressRepository _repository;
+
+  GetWordsDueForReviewUseCase(this._repository);
+
+  Future<List<VocabularyWord>> call({int limit = 20}) async {
+    return await _repository.getWordsDueForReview(limit: limit);
+  }
+}
+
+/// Use case for recording a spaced-repetition review outcome.
+class MarkWordReviewedUseCase {
+  final IProgressRepository _repository;
+
+  MarkWordReviewedUseCase(this._repository);
+
+  Future<void> call(int wordId, {required bool remembered}) async {
+    await _repository.markWordReviewed(wordId, remembered: remembered);
+  }
+}

@@ -35,4 +35,16 @@ abstract class IProgressRepository {
   /// Wipes all saved vocabulary, daily stats and streak data back to a
   /// fresh-install state. Irreversible.
   Future<void> resetProgress();
+
+  /// Returns the set of saved vocabulary words (just the `word` column, no
+  /// limit) for fast "is this word already known?" lookups while reading.
+  Future<Set<String>> getSavedWordsSet();
+
+  /// Returns saved words due for spaced-repetition review, most overdue
+  /// first (see [VocabularyWord] scheduling in the implementation).
+  Future<List<VocabularyWord>> getWordsDueForReview({int limit = 20});
+
+  /// Records a review outcome for a saved word: advances (or resets) its
+  /// position in the review schedule and stamps `last_reviewed`.
+  Future<void> markWordReviewed(int wordId, {required bool remembered});
 }

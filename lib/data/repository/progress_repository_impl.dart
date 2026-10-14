@@ -333,6 +333,79 @@ class ProgressRepositoryImpl implements IProgressRepository {
     }
   }
 
+  /// Leitner-style review intervals (days) indexed by `review_count`.
+  /// Index 0 (never reviewed) is due immediately; index ≥ 6 caps at 90 days.
+  static const List<int> _reviewIntervalDays = [0, 1, 3, 7, 16, 35, 90];
+
+  @override
+  Future<Set<String>> getSavedWordsSet() async {
+    try {
+      final db = await _dbHelper.userDatabase;
+      final maps = await db.query('user_vocabulary', columns: ['word']);
+      return maps.map((m) => m['word'] as String).toSet();
+    } catch (e) {
+      log('❌ Get saved words set error: $e');
+      return <String>{};
+    }
+  }
+
+  @override
+  Future<List<VocabularyWord>> getWordsDueForReview({int limit = 20}) async {
+    try {
+      final all = await getVocabulary(limit: 100000);
+      final now = DateTime.now();
+
+      bool isDue(VocabularyWord w) {
+        if (w.lastReviewed == null) return true;
+        final idx = w.reviewCount.clamp(0, _reviewIntervalDays.length - 1);
+        final dueDate =
+            w.lastReviewed!.add(Duration(days: _reviewIntervalDays[idx]));
+        return !now.isBefore(dueDate);
+      }
+
+      final due = all.where(isDue).toList()
+        ..sort((a, b) {
+          final aDate = a.lastReviewed ?? DateTime(0);
+          final bDate = b.lastReviewed ?? DateTime(0);
+          return aDate.compareTo(bDate); // most overdue (oldest) first
+        });
+
+      return due.take(limit).toList();
+    } catch (e) {
+      log('❌ Get words due for review error: $e');
+      return [];
+    }
+  }
+
+  @override
+  Future<void> markWordReviewed(int wordId, {required bool remembered}) async {
+    try {
+      final db = await _dbHelper.userDatabase;
+      if (remembered) {
+        await db.rawUpdate(
+          '''
+          UPDATE user_vocabulary
+          SET review_count = review_count + 1, last_reviewed = ?
+          WHERE id = ?
+          ''',
+          [DateTime.now().toIso8601String(), wordId],
+        );
+      } else {
+        await db.rawUpdate(
+          '''
+          UPDATE user_vocabulary
+          SET review_count = 0, last_reviewed = ?
+          WHERE id = ?
+          ''',
+          [DateTime.now().toIso8601String(), wordId],
+        );
+      }
+    } catch (e) {
+      log('❌ Mark word reviewed error: $e');
+      rethrow;
+    }
+  }
+
   @override
   Future<void> resetProgress() async {
     try {
