@@ -103,6 +103,17 @@ class CharuTheme {
         ),
       ),
     ),
+    // Without an explicit shape, Material 3's default OutlinedButton is a
+    // full-stadium pill while ElevatedButton above is a rounded rectangle —
+    // the two button types look like they belong to different apps when
+    // placed side by side (e.g. the review-card "Не помню"/"Помню" pair).
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: _chinaRed,
@@ -213,6 +224,13 @@ class CharuTheme {
         backgroundColor: const Color(0xFFE85050),
         foregroundColor: Colors.white,
         elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),

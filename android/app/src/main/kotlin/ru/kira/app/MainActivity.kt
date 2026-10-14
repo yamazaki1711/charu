@@ -1,4 +1,4 @@
-package ru.charu.app
+package ru.kira.app
 
 import io.flutter.embedding.android.FlutterActivity
 

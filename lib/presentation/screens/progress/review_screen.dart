@@ -143,61 +143,83 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
             ),
           ),
           Expanded(
-            child: Center(
-              child: GestureDetector(
-                onTap: () => setState(() => _revealed = true),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.06),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        word.word,
-                        style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
-                        textAlign: TextAlign.center,
-                      ),
-                      if (!_revealed) ...[
-                        const SizedBox(height: 24),
-                        Text(
-                          'Нажмите, чтобы открыть перевод',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+            child: GestureDetector(
+              onTap: () => setState(() => _revealed = true),
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                // A long dictionary entry (many senses/examples) must never
+                // overflow past this card's bounds — that previously let
+                // the card's own text bleed over the "Не помню"/"Помню"
+                // buttons below it. Scrolling inside a card this tall is a
+                // bit unusual, but it's the only way to guarantee the
+                // buttons stay put; LayoutBuilder + a min-height
+                // ConstrainedBox keeps short entries vertically centered
+                // like before, while long ones simply scroll.
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: constraints.maxHeight - 96, // minus vertical padding
+                          ),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  word.word,
+                                  style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+                                  textAlign: TextAlign.center,
+                                ),
+                                if (!_revealed) ...[
+                                  const SizedBox(height: 24),
+                                  Text(
+                                    'Нажмите, чтобы открыть перевод',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
+                                    ),
+                                  ),
+                                ] else ...[
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    word.pinyin,
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontStyle: FontStyle.italic,
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  const Divider(),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    word.translation,
+                                    style: const TextStyle(fontSize: 18),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
                         ),
-                      ] else ...[
-                        const SizedBox(height: 16),
-                        Text(
-                          word.pinyin,
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontStyle: FontStyle.italic,
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-                        const Divider(),
-                        const SizedBox(height: 12),
-                        Text(
-                          word.translation,
-                          style: const TextStyle(fontSize: 18),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ],
+                      );
+                    },
                   ),
                 ),
               ),

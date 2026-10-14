@@ -42,7 +42,7 @@ class CharuApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
-      title: 'CHARU',
+      title: 'Kira',
       debugShowCheckedModeBanner: false,
       theme: CharuTheme.light,
       darkTheme: CharuTheme.dark,
