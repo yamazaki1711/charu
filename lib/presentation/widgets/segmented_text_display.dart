@@ -1,4 +1,3 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../core/log.dart';
 import 'package:flutter/material.dart';
@@ -103,7 +102,6 @@ class SegmentedTextDisplay extends ConsumerStatefulWidget {
 class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
   List<String> _segments = [];
   final Map<String, String> _pinyinCache = {};
-  final List<TapGestureRecognizer> _recognizers = [];
 
   @override
   void initState() {
@@ -117,19 +115,6 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
     if (oldWidget.text != widget.text) {
       _segmentText();
     }
-  }
-
-  @override
-  void dispose() {
-    _disposeRecognizers();
-    super.dispose();
-  }
-
-  void _disposeRecognizers() {
-    for (final r in _recognizers) {
-      r.dispose();
-    }
-    _recognizers.clear();
   }
 
   void _segmentText() {
@@ -162,28 +147,36 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
     final textStyle = TextStyle(
       color: theme.colorScheme.onSurface,
       fontSize: fontSize,
-      height: 1.6,
     );
 
     if (_segments.isEmpty) {
       return Text(widget.text, style: textStyle);
     }
 
-    _disposeRecognizers();
-
-    final spans = <InlineSpan>[];
+    // Wrap, not RichText/TextSpan: a text paragraph where some inline runs
+    // are "tall" (word + pinyin above it) and others are plain (digits,
+    // punctuation) cannot be laid out consistently with RichText — every
+    // baseline/alignment strategy tried (PlaceholderAlignment.baseline,
+    // .middle, overflow-painting via Stack) either collided with the line
+    // above or left plain runs floating at some arbitrary height relative
+    // to the annotated words next to them, because RichText's line metrics
+    // are shared across all inline runs with no per-run override. Wrap
+    // sidesteps this entirely: every segment (Chinese word-with-pinyin, or
+    // a plain run) is laid out as an independent box, and
+    // WrapCrossAlignment.end bottom-aligns all of them within each wrapped
+    // line regardless of height — a short plain Text and a tall
+    // word+pinyin Column naturally share the same bottom edge, which is
+    // exactly where a word's visual baseline sits.
+    final children = <Widget>[];
     for (final word in _segments) {
       final isChinese = _containsChinese(word);
 
       if (!isChinese) {
-        spans.add(TextSpan(text: word, style: textStyle));
+        children.add(Text(word, style: textStyle));
         continue;
       }
 
       final isKnown = knownWords.contains(word);
-
-      final recognizer = TapGestureRecognizer()..onTap = () => _onWordTapped(word);
-      _recognizers.add(recognizer);
 
       // Already-known (saved) words render plain — only new/unknown words
       // get the dotted underline, so a glance at the page shows at a
@@ -196,76 +189,45 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
               decorationStyle: TextDecorationStyle.dotted,
             );
 
-      // "Tap-only" mode intentionally does NOT reveal pinyin inline: a
-      // Chinese word with pinyin is a taller inline block than its plain
-      // neighbors, and Flutter has no notion of "ruby text" that keeps
-      // mixed plain/annotated runs level on one line — toggling a single
-      // word's pinyin on would visibly bump that word (and everything
-      // after it on the line) out of alignment. The dictionary popup
-      // (opened by every tap, see _onWordTapped) already shows the
-      // pinyin prominently, so tap-only mode simply keeps the inline text
-      // clean and relies on that popup as the "reveal".
+      // "Tap-only" mode intentionally does NOT reveal pinyin inline — see
+      // module doc for why. The dictionary popup (opened by every tap,
+      // _onWordTapped) already shows the pinyin prominently, so tap-only
+      // mode simply keeps the inline text clean and relies on that popup.
       final showPinyinForWord = showPinyin && !tapOnlyPinyin;
+      final pinyin = showPinyinForWord
+          ? (_pinyinCache[word] ?? PinyinHelper.getPinyin(word))
+          : '';
 
-      if (!showPinyinForWord) {
-        spans.add(TextSpan(text: word, style: wordStyle, recognizer: recognizer));
-        continue;
-      }
-
-      final pinyin = _pinyinCache[word] ?? PinyinHelper.getPinyin(word);
-      if (pinyin.isEmpty) {
-        spans.add(TextSpan(text: word, style: wordStyle, recognizer: recognizer));
-        continue;
-      }
-
-      // Ruby-style annotation: WidgetSpan with a Column(min) — pinyin
-      // above the word (standard ruby/furigana convention). Deliberately
-      // NOT using PlaceholderAlignment.baseline: a Column doesn't report a
-      // real text baseline, so Flutter falls back to aligning the BOTTOM
-      // of the whole column to the line's baseline — meaning the ascent
-      // this run contributes to the line is the Column's full height
-      // (pinyin + spacing + word). That's fine for THIS run, but a
-      // previous attempt at overflow-painting the pinyin outside the
-      // layout box (to avoid that extra ascent) caused the pinyin to
-      // paint into the line above instead, since nothing reserves room
-      // for it there. PlaceholderAlignment.middle sidesteps baseline
-      // fallback entirely — Flutter centers the whole annotated unit
-      // within the line's own box — which stays visually consistent for
-      // CJK text (fullwidth characters are already centered in their own
-      // em-box, unlike Latin baseline-anchored glyphs) and, crucially,
-      // the Column's full height is honestly reserved by the layout
-      // engine, so consecutive lines can never collide regardless of how
-      // many words on a line carry annotations.
-      spans.add(WidgetSpan(
-        alignment: PlaceholderAlignment.middle,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => _onWordTapped(word),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(
-                pinyin,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                  height: 1.0,
-                  letterSpacing: 0.3,
-                ),
+      children.add(GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _onWordTapped(word),
+        child: pinyin.isEmpty
+            ? Text(word, style: wordStyle)
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    pinyin,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                      height: 1.0,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(word, style: wordStyle),
+                ],
               ),
-              const SizedBox(height: 1),
-              Text(word, style: wordStyle),
-            ],
-          ),
-        ),
       ));
     }
 
-    return RichText(
-      softWrap: true,
-      text: TextSpan(children: spans, style: textStyle),
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.end,
+      runSpacing: 6,
+      children: children,
     );
   }
 }
