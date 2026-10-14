@@ -153,11 +153,20 @@ CREATE TABLE IF NOT EXISTS news_sources (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Добавление встроенных источников по умолчанию
+-- Добавление встроенных источников по умолчанию.
+-- Baidu/Sina/People's Daily — исходные плейсхолдеры, выключены по
+-- умолчанию (html-парсер Baidu не реализован, Sina/People's Daily тут —
+-- не рабочие RSS-эндпоинты). Реальные RSS-источники добавлены позже
+-- (news_api_service.dart kDefaultRssSources); единственный включённый
+-- по умолчанию — 中国生活, чтобы первый запуск не заваливал ленту сразу
+-- тремя источниками.
 INSERT INTO news_sources (name, url, type, enabled) VALUES
-    ('Baidu Baijiahao', 'https://baijiahao.baidu.com', 'html', 1),
-    ('Sina News', 'https://news.sina.com.cn', 'rss', 1),
-    ("People's Daily", 'http://en.people.cn', 'rss', 1);
+    ('Baidu Baijiahao', 'https://baijiahao.baidu.com', 'html', 0),
+    ('Sina News', 'https://news.sina.com.cn', 'rss', 0),
+    ("People's Daily", 'http://en.people.cn', 'rss', 0),
+    ('中国生活', 'https://www.chinanews.com.cn/rss/life.xml', 'rss', 1),
+    ('即时新闻 (chinanews)', 'https://www.chinanews.com.cn/rss/scroll-news.xml', 'rss', 0),
+    ('人民日报时政 (people.com.cn)', 'http://www.people.com.cn/rss/politics.xml', 'rss', 0);
 
 -- ============================================================================
 -- 9. ИСТОРИЯ ЧТЕНИЯ ФАЙЛОВ
