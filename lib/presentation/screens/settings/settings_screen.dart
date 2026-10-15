@@ -144,18 +144,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _SectionTitle(title: 'Словарь'),
           _InfoTile(
             title: 'Офлайн-словарь',
-            subtitle: 'БКРС (~860k записей)',
+            subtitle: 'БКРС (863 740 статей)',
             trailing: const Icon(Icons.check_circle, color: Colors.green),
           ),
           _InfoTile(
             title: 'Топонимы',
-            subtitle: '~100k географических названий',
-            trailing: const Icon(Icons.check_circle, color: Colors.green),
+            subtitle: 'Демо-набор (расширение в планах)',
+            trailing: const Icon(Icons.hourglass_bottom, color: Colors.orange),
           ),
           _InfoTile(
             title: 'Личные имена',
-            subtitle: '~20k имён и фамилий',
-            trailing: const Icon(Icons.check_circle, color: Colors.green),
+            subtitle: 'Демо-набор (расширение в планах)',
+            trailing: const Icon(Icons.hourglass_bottom, color: Colors.orange),
           ),
           const SizedBox(height: 24),
 
