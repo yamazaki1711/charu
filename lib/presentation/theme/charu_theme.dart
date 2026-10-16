@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Chinese Aesthetics Theme for CHARU
-/// Traditional Chinese red accent with modern glass effects
+/// Traditional Chinese red accent, flat Material 3 (no blur/glass effects)
 class CharuTheme {
   CharuTheme._();
 

@@ -163,7 +163,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _SectionTitle(title: 'О приложении'),
           _InfoTile(
             title: 'Версия',
-            subtitle: '0.1.0',
+            // Держать в синхроне с pubspec.yaml вручную — package_info_plus
+            // не подключён, чтобы не тянуть лишнюю зависимость ради одной строки.
+            subtitle: '0.1.1',
           ),
           _InfoTile(
             title: 'Kira',
