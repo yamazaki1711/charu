@@ -16,6 +16,9 @@ import '../domain/repository/news_repository.dart';
 import '../data/repository/news_repository_impl.dart';
 import '../data/repository/news_sources_repository.dart';
 import '../domain/usecase/news_usecases.dart';
+import '../data/remote/wikisource_service.dart';
+import '../data/repository/library_repository_impl.dart';
+import '../domain/repository/library_repository.dart';
 
 /// Database Helper provider (singleton).
 final databaseHelperProvider = Provider<DatabaseHelper>((ref) {
@@ -116,6 +119,22 @@ final clearHistoryUseCaseProvider = Provider<ClearHistoryUseCase>((ref) {
 /// UseCase provider for bookmarking the current reading position.
 final saveBookmarkUseCaseProvider = Provider<SaveBookmarkUseCase>((ref) {
   return SaveBookmarkUseCase(ref.watch(fileRepositoryProvider));
+});
+
+// -----------------------------------------------------------------------------
+// LIBRARY MODULE (Wikisource books)
+// -----------------------------------------------------------------------------
+
+final wikisourceServiceProvider = Provider<WikisourceService>((ref) {
+  return WikisourceService();
+});
+
+final libraryRepositoryProvider = Provider<ILibraryRepository>((ref) {
+  return LibraryRepositoryImpl(
+    dbHelper: ref.watch(databaseHelperProvider),
+    wikisourceService: ref.watch(wikisourceServiceProvider),
+    fileRepository: ref.watch(fileRepositoryProvider),
+  );
 });
 
 // -----------------------------------------------------------------------------

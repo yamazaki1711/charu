@@ -103,6 +103,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
+          // Library Section
+          _SectionTitle(title: 'Библиотека'),
+          Consumer(
+            builder: (context, ref, _) {
+              final keepTraditional =
+                  ref.watch(libraryKeepTraditionalProvider);
+              return _SwitchTile(
+                title: 'Сохранять традиционные иероглифы',
+                subtitle: 'Wikisource отдаёт только традиционные; '
+                    'по умолчанию конвертируются в упрощённые',
+                value: keepTraditional,
+                onChanged: (v) =>
+                    ref.read(libraryKeepTraditionalProvider.notifier).set(v),
+                icon: Icons.menu_book_outlined,
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+
           // Notifications Section
           _SectionTitle(title: 'Уведомления'),
           Consumer(

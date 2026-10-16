@@ -421,6 +421,9 @@ class FileRepositoryImpl implements IFileRepository {
     }
   }
 
+  @override
+  Future<void> addToHistory(LocalFile file) => _saveToHistory(file);
+
   // Private helpers
 
   Future<void> _saveToHistory(LocalFile file) async {

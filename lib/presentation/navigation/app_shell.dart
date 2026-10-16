@@ -24,6 +24,12 @@ class AppShell extends StatelessWidget {
       path: '/files',
     ),
     (
+      icon: Icons.menu_book_outlined,
+      activeIcon: Icons.menu_book,
+      label: 'Библиотека',
+      path: '/library',
+    ),
+    (
       icon: Icons.bar_chart_outlined,
       activeIcon: Icons.bar_chart,
       label: 'Прогресс',

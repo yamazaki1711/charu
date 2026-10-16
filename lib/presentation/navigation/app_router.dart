@@ -4,6 +4,7 @@ import '../screens/news/news_screen.dart';
 import '../screens/news/article_screen.dart';
 import '../screens/files/files_screen.dart';
 import '../screens/files/reader_screen.dart';
+import '../screens/library/library_screen.dart';
 import '../screens/progress/progress_screen.dart';
 import '../screens/progress/review_screen.dart';
 import '../screens/settings/settings_screen.dart';
@@ -11,8 +12,8 @@ import 'app_shell.dart';
 
 /// Application router configuration.
 ///
-/// Bottom-navigation shell with 4 tabs:
-///   📰 News  |  📁 Files  |  📊 Progress  |  ⚙ Settings
+/// Bottom-navigation shell with 5 tabs:
+///   📰 News  |  📁 Files  |  📚 Library  |  📊 Progress  |  ⚙ Settings
 final GoRouter appRouter = GoRouter(
   initialLocation: '/news',
   routes: [
@@ -54,6 +55,11 @@ final GoRouter appRouter = GoRouter(
               },
             ),
           ],
+        ),
+        GoRoute(
+          path: '/library',
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: LibraryScreen()),
         ),
         GoRoute(
           path: '/progress',

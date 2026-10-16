@@ -25,4 +25,9 @@ abstract class IFileRepository {
 
   /// Save a bookmark at [position] (character offset) in [filePath].
   Future<void> addBookmark(String filePath, int position, {String? note});
+
+  /// Registers [file] in reading history without going through [pickFile]
+  /// (used by the Library to plug a downloaded book into the existing
+  /// reader/progress/bookmarks pipeline as if it were a locally opened file).
+  Future<void> addToHistory(LocalFile file);
 }

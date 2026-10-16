@@ -169,7 +169,7 @@ class DatabaseHelper {
 
     final db = await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         log('[DB] Creating user tables...');
 
@@ -239,6 +239,8 @@ class DatabaseHelper {
           )
         ''');
 
+        await _createLibraryBooksTable(db);
+
         // Indexes
         await db.execute(
             'CREATE INDEX IF NOT EXISTS idx_user_vocabulary_word ON user_vocabulary(word)');
@@ -249,10 +251,34 @@ class DatabaseHelper {
 
         log('[DB] User tables created successfully');
       },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        log('[DB] Upgrading user DB: $oldVersion -> $newVersion');
+        if (oldVersion < 2) {
+          await _createLibraryBooksTable(db);
+        }
+      },
     );
 
     log('[DB] User DB opened (read-write)');
     return db;
+  }
+
+  /// Скачанные книги из раздела «Библиотека» (Wikisource).
+  /// Добавлена в версии 2 схемы charu_user.db.
+  Future<void> _createLibraryBooksTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS library_books (
+        id TEXT PRIMARY KEY,
+        wikisource_title TEXT NOT NULL,
+        author TEXT NOT NULL,
+        title_display TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        format TEXT NOT NULL DEFAULT 'txt',
+        downloaded_at DATETIME NOT NULL,
+        char_count INTEGER DEFAULT 0,
+        source_url TEXT
+      )
+    ''');
   }
 
   // ---------------------------------------------------------------------------
