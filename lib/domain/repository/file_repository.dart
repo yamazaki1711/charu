@@ -25,4 +25,10 @@ abstract class IFileRepository {
 
   /// Save a bookmark at [position] (character offset) in [filePath].
   Future<void> addBookmark(String filePath, int position, {String? note});
+
+  /// All bookmarks for [filePath], newest first.
+  Future<List<BookmarkEntry>> getBookmarks(String filePath);
+
+  /// Deletes a single bookmark by its id.
+  Future<void> removeBookmark(int id);
 }

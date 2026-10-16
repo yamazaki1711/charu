@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../core/log.dart';
 import 'package:flutter/material.dart';
@@ -6,7 +8,11 @@ import 'package:jieba_flutter/analysis/jieba_segmenter.dart';
 
 import '../../di/di.dart';
 import '../state/app_settings_state.dart'
-    show showPinyinProvider, pinyinTapOnlyProvider, fontSizeProvider;
+    show
+        showPinyinProvider,
+        pinyinTapOnlyProvider,
+        fontSizeProvider,
+        lineHeightProvider;
 import '../state/progress_state.dart' show savedWordsSetProvider;
 import 'dictionary_popup.dart';
 import 'pinyin_helper.dart';
@@ -103,6 +109,13 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
   List<String> _segments = [];
   final Map<String, String> _pinyinCache = {};
 
+  /// Index of the segment to flash on tap — visual confirmation of exactly
+  /// which word the segmenter resolved the tap to (segmentation can merge
+  /// several characters into one word; without this it isn't always obvious
+  /// what the popup's translation actually refers to).
+  int? _flashedIndex;
+  Timer? _flashTimer;
+
   @override
   void initState() {
     super.initState();
@@ -117,6 +130,12 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
     }
   }
 
+  @override
+  void dispose() {
+    _flashTimer?.cancel();
+    super.dispose();
+  }
+
   void _segmentText() {
     setState(() {
       _segments = segmentChinese(widget.text);
@@ -129,8 +148,13 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
     });
   }
 
-  void _onWordTapped(String word) async {
+  void _onWordTapped(String word, int index) async {
     log('[Tap] Word tapped: "$word"');
+    _flashTimer?.cancel();
+    setState(() => _flashedIndex = index);
+    _flashTimer = Timer(const Duration(milliseconds: 1200), () {
+      if (mounted) setState(() => _flashedIndex = null);
+    });
     final useCase = ref.read(lookupWordUseCaseProvider);
     final result = await useCase.call(word);
     if (!mounted) return;
@@ -144,9 +168,11 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
     final tapOnlyPinyin = ref.watch(pinyinTapOnlyProvider);
     final knownWords = ref.watch(savedWordsSetProvider).valueOrNull ?? const <String>{};
     final fontSize = ref.watch(fontSizeProvider).toDouble();
+    final lineHeight = ref.watch(lineHeightProvider);
     final textStyle = TextStyle(
       color: theme.colorScheme.onSurface,
       fontSize: fontSize,
+      height: lineHeight,
     );
 
     if (_segments.isEmpty) {
@@ -168,7 +194,8 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
     // word+pinyin Column naturally share the same bottom edge, which is
     // exactly where a word's visual baseline sits.
     final children = <Widget>[];
-    for (final word in _segments) {
+    for (var index = 0; index < _segments.length; index++) {
+      final word = _segments[index];
       final isChinese = _containsChinese(word);
 
       if (!isChinese) {
@@ -198,29 +225,41 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
           ? (_pinyinCache[word] ?? PinyinHelper.getPinyin(word))
           : '';
 
+      final isFlashed = _flashedIndex == index;
+
       children.add(GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => _onWordTapped(word),
-        child: pinyin.isEmpty
-            ? Text(word, style: wordStyle)
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    pinyin,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                      height: 1.0,
-                      letterSpacing: 0.3,
+        onTap: () => _onWordTapped(word, index),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 1),
+          decoration: BoxDecoration(
+            color: isFlashed
+                ? theme.colorScheme.primary.withValues(alpha: 0.25)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: pinyin.isEmpty
+              ? Text(word, style: wordStyle)
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      pinyin,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                        height: 1.0,
+                        letterSpacing: 0.3,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 1),
-                  Text(word, style: wordStyle),
-                ],
-              ),
+                    const SizedBox(height: 1),
+                    Text(word, style: wordStyle),
+                  ],
+                ),
+        ),
       ));
     }
 

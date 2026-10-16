@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../domain/model/dictionary_models.dart';
 import '../../di/di.dart';
@@ -239,6 +242,45 @@ class DictionaryPopup extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
+          Row(
+            children: [
+              _ActionIcon(
+                icon: Icons.copy_outlined,
+                tooltip: 'Копировать',
+                onTap: () async {
+                  await Clipboard.setData(ClipboardData(text: result.chineseWord));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Скопировано')),
+                    );
+                  }
+                },
+              ),
+              const SizedBox(width: 8),
+              _ActionIcon(
+                icon: Icons.share_outlined,
+                tooltip: 'Поделиться',
+                onTap: () {
+                  final text = rawTranslation == 'Нет перевода'
+                      ? '${result.chineseWord} (${result.pinyin})'
+                      : '${result.chineseWord} (${result.pinyin}) — $rawTranslation';
+                  SharePlus.instance.share(ShareParams(text: text));
+                },
+              ),
+              const SizedBox(width: 8),
+              _ActionIcon(
+                icon: Icons.open_in_new,
+                tooltip: 'Искать на bkrs.info',
+                onTap: () => launchUrl(
+                  Uri.parse(
+                    'https://bkrs.info/slovo.php?ch=${Uri.encodeComponent(result.chineseWord)}',
+                  ),
+                  mode: LaunchMode.externalApplication,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
           const Divider(),
           const SizedBox(height: 16),
           Flexible(
@@ -297,6 +339,32 @@ class DictionaryPopup extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ActionIcon extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  const _ActionIcon({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return IconButton(
+      onPressed: onTap,
+      tooltip: tooltip,
+      icon: Icon(icon, size: 20),
+      style: IconButton.styleFrom(
+        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+        foregroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.8),
       ),
     );
   }

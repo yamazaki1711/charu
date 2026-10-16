@@ -421,6 +421,41 @@ class FileRepositoryImpl implements IFileRepository {
     }
   }
 
+  @override
+  Future<List<BookmarkEntry>> getBookmarks(String filePath) async {
+    try {
+      final db = await _dbHelper.userDatabase;
+      final maps = await db.query(
+        'bookmarks',
+        where: 'file_path = ?',
+        whereArgs: [filePath],
+        orderBy: 'created_at DESC',
+      );
+      return maps
+          .map((m) => BookmarkEntry(
+                id: m['id'] as int,
+                filePath: m['file_path'] as String,
+                position: m['position'] as int,
+                note: m['note'] as String?,
+                createdAt: DateTime.parse(m['created_at'] as String),
+              ))
+          .toList();
+    } catch (e) {
+      log('❌ Get bookmarks error: $e');
+      return [];
+    }
+  }
+
+  @override
+  Future<void> removeBookmark(int id) async {
+    try {
+      final db = await _dbHelper.userDatabase;
+      await db.delete('bookmarks', where: 'id = ?', whereArgs: [id]);
+    } catch (e) {
+      log('❌ Remove bookmark error: $e');
+    }
+  }
+
   // Private helpers
 
   Future<void> _saveToHistory(LocalFile file) async {

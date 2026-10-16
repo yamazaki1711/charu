@@ -118,6 +118,16 @@ final saveBookmarkUseCaseProvider = Provider<SaveBookmarkUseCase>((ref) {
   return SaveBookmarkUseCase(ref.watch(fileRepositoryProvider));
 });
 
+/// UseCase provider for listing a file's bookmarks.
+final getBookmarksUseCaseProvider = Provider<GetBookmarksUseCase>((ref) {
+  return GetBookmarksUseCase(ref.watch(fileRepositoryProvider));
+});
+
+/// UseCase provider for deleting a bookmark.
+final removeBookmarkUseCaseProvider = Provider<RemoveBookmarkUseCase>((ref) {
+  return RemoveBookmarkUseCase(ref.watch(fileRepositoryProvider));
+});
+
 // -----------------------------------------------------------------------------
 // PROGRESS MODULE
 // -----------------------------------------------------------------------------

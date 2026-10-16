@@ -132,6 +132,90 @@ class FontSizeNotifier extends StateNotifier<int> {
   }
 }
 
+// ─── Reader line height ──────────────────────────────────────────────────────
+
+/// Provider for the reader line spacing multiplier (default: 1.7).
+final lineHeightProvider =
+    StateNotifierProvider<LineHeightNotifier, double>((ref) {
+  return LineHeightNotifier();
+});
+
+/// Notifier for the reader line-height setting (Settings → Appearance).
+///
+/// Persists to SharedPreferences; default is `1.7` (previously hardcoded).
+class LineHeightNotifier extends StateNotifier<double> {
+  static const steps = [1.3, 1.7, 2.1];
+
+  LineHeightNotifier() : super(1.7) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getDouble('line_height') ?? 1.7;
+  }
+
+  Future<void> set(double value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('line_height', value);
+    state = value;
+  }
+}
+
+// ─── Reader side margins ─────────────────────────────────────────────────────
+
+/// Provider for the reader horizontal padding in px (default: 16).
+final readerMarginProvider =
+    StateNotifierProvider<ReaderMarginNotifier, double>((ref) {
+  return ReaderMarginNotifier();
+});
+
+class ReaderMarginNotifier extends StateNotifier<double> {
+  static const steps = [8.0, 16.0, 24.0, 32.0];
+
+  ReaderMarginNotifier() : super(16.0) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getDouble('reader_margin') ?? 16.0;
+  }
+
+  Future<void> set(double value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('reader_margin', value);
+    state = value;
+  }
+}
+
+// ─── Open last file on launch ────────────────────────────────────────────────
+
+/// Provider for "open last read file on launch" (default: OFF — lands on
+/// the News tab, like today). When ON, [CharuApp] jumps straight to the
+/// most recently opened file's reader right after a cold start.
+final openLastFileProvider =
+    StateNotifierProvider<OpenLastFileNotifier, bool>((ref) {
+  return OpenLastFileNotifier();
+});
+
+class OpenLastFileNotifier extends StateNotifier<bool> {
+  OpenLastFileNotifier() : super(false) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getBool('open_last_file') ?? false;
+  }
+
+  Future<void> set(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('open_last_file', value);
+    state = value;
+  }
+}
+
 // ─── Notifications ───────────────────────────────────────────────────────────
 
 /// Provider for the "daily reminder" notification setting (default: ON).

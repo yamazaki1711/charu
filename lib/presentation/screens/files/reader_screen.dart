@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:screen_brightness/screen_brightness.dart';
 
 import '../../../di/di.dart';
+import '../../state/app_settings_state.dart' show readerMarginProvider;
 import '../../widgets/segmented_text_display.dart';
 
 /// 📖 Reader screen for local files (TXT, HTML, EPUB)
@@ -36,10 +38,19 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
   final ScrollController _scrollController = ScrollController();
   Timer? _sessionTick;
 
+  /// Current scroll position as a 0..1 fraction, kept in sync with the
+  /// scroll controller for the position slider's thumb + "N%" label.
+  double _scrollFraction = 0.0;
+
+  /// Non-null while the user has overridden the screen brightness for this
+  /// reading session (reset on dispose — never a permanent device change).
+  double? _brightnessOverride;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _scrollController.addListener(_onScroll);
     // Add ~1 reading minute every 60 seconds of active reading, and persist
     // the scroll position so the file resumes where the user left off.
     _sessionTick = Timer.periodic(const Duration(seconds: 60), (_) {
@@ -50,12 +61,27 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
     _loadFile();
   }
 
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final maxExtent = _scrollController.position.maxScrollExtent;
+    final fraction =
+        maxExtent > 0 ? (_scrollController.offset / maxExtent).clamp(0.0, 1.0) : 0.0;
+    if ((fraction - _scrollFraction).abs() > 0.001) {
+      setState(() => _scrollFraction = fraction);
+    }
+  }
+
   @override
   void dispose() {
     _sessionTick?.cancel();
     _savePosition();
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     WidgetsBinding.instance.removeObserver(this);
+    if (_brightnessOverride != null) {
+      // Best-effort: never block screen teardown on the platform channel.
+      ScreenBrightness().resetApplicationScreenBrightness().catchError((_) {});
+    }
     super.dispose();
   }
 
@@ -153,14 +179,200 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.bookmark_border),
+            icon: const Icon(Icons.brightness_6_outlined),
+            onPressed: _showBrightnessSlider,
+            tooltip: 'Яркость',
+          ),
+          IconButton(
+            icon: const Icon(Icons.bookmarks_outlined),
+            onPressed: widget.demoText != null ? null : _showBookmarksList,
+            tooltip: 'Закладки',
+          ),
+          IconButton(
+            icon: const Icon(Icons.bookmark_add_outlined),
             onPressed: _addBookmark,
-            tooltip: 'Закладка',
+            tooltip: 'Добавить закладку здесь',
           ),
         ],
       ),
-      body: _buildBody(theme),
+      body: Column(
+        children: [
+          Expanded(child: _buildBody(theme)),
+          if (!_isLoading && _error == null && _content != null && _content!.isNotEmpty)
+            _buildPositionSlider(theme),
+        ],
+      ),
     );
+  }
+
+  /// Position slider + "N%" label — lets you jump anywhere in a long text
+  /// instead of scrolling blindly (a 100k-character book is a lot of
+  /// flicking). Dragging computes the matching scroll offset directly, same
+  /// scroll-fraction math as [_savePosition]/[_loadFile]'s resume logic.
+  Widget _buildPositionSlider(ThemeData theme) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 2,
+                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                ),
+                child: Slider(
+                  value: _scrollFraction.clamp(0.0, 1.0),
+                  onChanged: (value) {
+                    if (!_scrollController.hasClients) return;
+                    final maxExtent = _scrollController.position.maxScrollExtent;
+                    setState(() => _scrollFraction = value);
+                    _scrollController.jumpTo(maxExtent * value);
+                  },
+                  onChangeEnd: (_) => _savePosition(),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 42,
+              child: Text(
+                '${(_scrollFraction * 100).round()}%',
+                textAlign: TextAlign.end,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showBrightnessSlider() async {
+    double current;
+    try {
+      current = _brightnessOverride ?? await ScreenBrightness().application;
+    } catch (_) {
+      current = 0.5;
+    }
+    if (!mounted) return;
+    await showModalBottomSheet(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+              child: Row(
+                children: [
+                  const Icon(Icons.brightness_low),
+                  Expanded(
+                    child: Slider(
+                      value: current.clamp(0.01, 1.0),
+                      min: 0.01,
+                      max: 1.0,
+                      onChanged: (value) async {
+                        setSheetState(() => current = value);
+                        _brightnessOverride = value;
+                        try {
+                          await ScreenBrightness().setApplicationScreenBrightness(value);
+                        } catch (_) {
+                          // Unsupported on this platform/device — ignore.
+                        }
+                      },
+                    ),
+                  ),
+                  const Icon(Icons.brightness_high),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _showBookmarksList() async {
+    final bookmarks =
+        await ref.read(getBookmarksUseCaseProvider).call(widget.filePath);
+    if (!mounted) return;
+
+    final content = _content;
+    final target = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.5,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (ctx, scrollController) {
+            if (bookmarks.isEmpty) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Text('Пока нет закладок в этом файле'),
+                ),
+              );
+            }
+            return ListView.separated(
+              controller: scrollController,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: bookmarks.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (ctx, i) {
+                final b = bookmarks[i];
+                final percent = content != null && content.isNotEmpty
+                    ? (b.position / content.length * 100).clamp(0, 100).round()
+                    : 0;
+                final preview = content != null && b.position < content.length
+                    ? content
+                        .substring(
+                          b.position,
+                          (b.position + 40).clamp(0, content.length),
+                        )
+                        .replaceAll('\n', ' ')
+                    : '';
+                return ListTile(
+                  leading: const Icon(Icons.bookmark),
+                  title: Text('$percent% · $preview…', maxLines: 1, overflow: TextOverflow.ellipsis),
+                  subtitle: Text(_formatDate(b.createdAt)),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () async {
+                      await ref.read(removeBookmarkUseCaseProvider).call(b.id);
+                      if (ctx.mounted) Navigator.of(ctx).pop();
+                      _showBookmarksList();
+                    },
+                  ),
+                  onTap: () => Navigator.of(ctx).pop(b.position),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+
+    if (target != null && content != null && content.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_scrollController.hasClients) return;
+        final maxExtent = _scrollController.position.maxScrollExtent;
+        if (maxExtent <= 0) return;
+        final fraction = (target / content.length).clamp(0.0, 1.0);
+        _scrollController.jumpTo(maxExtent * fraction);
+      });
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}.'
+        '${date.month.toString().padLeft(2, '0')}.${date.year} '
+        '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   Widget _buildBody(ThemeData theme) {
@@ -221,12 +433,13 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen>
     // Constrain content width on wide screens (tablet) so Chinese text
     // lines don't stretch across the full screen. Wrapped in a scroll view
     // since SegmentedTextDisplay renders a single unbounded RichText.
+    final margin = ref.watch(readerMarginProvider);
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 700),
         child: SingleChildScrollView(
           controller: _scrollController,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          padding: EdgeInsets.symmetric(horizontal: margin, vertical: 16),
           child: SegmentedTextDisplay(text: _content!),
         ),
       ),

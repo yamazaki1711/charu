@@ -33,6 +33,23 @@ enum FileFormat {
   const FileFormat(this.extension);
 }
 
+/// A saved position inside a file, with an optional note.
+class BookmarkEntry {
+  final int id;
+  final String filePath;
+  final int position;
+  final String? note;
+  final DateTime createdAt;
+
+  const BookmarkEntry({
+    required this.id,
+    required this.filePath,
+    required this.position,
+    this.note,
+    required this.createdAt,
+  });
+}
+
 /// Model for reading session statistics
 class ReadingSession {
   final String fileId;

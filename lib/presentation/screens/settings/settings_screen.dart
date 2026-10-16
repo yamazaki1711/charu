@@ -101,6 +101,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               );
             },
           ),
+          Consumer(
+            builder: (context, ref, _) {
+              final lineHeight = ref.watch(lineHeightProvider);
+              return _StepperTile(
+                icon: Icons.format_line_spacing,
+                title: 'Межстрочный интервал',
+                subtitle: _lineHeightLabel(lineHeight),
+                steps: LineHeightNotifier.steps,
+                currentValue: lineHeight,
+                onChanged: (v) => ref.read(lineHeightProvider.notifier).set(v),
+              );
+            },
+          ),
+          Consumer(
+            builder: (context, ref, _) {
+              final margin = ref.watch(readerMarginProvider);
+              return _StepperTile(
+                icon: Icons.align_horizontal_center,
+                title: 'Поля страницы',
+                subtitle: '${margin.round()} px',
+                steps: ReaderMarginNotifier.steps,
+                currentValue: margin,
+                onChanged: (v) => ref.read(readerMarginProvider.notifier).set(v),
+              );
+            },
+          ),
+          Consumer(
+            builder: (context, ref, _) {
+              final enabled = ref.watch(openLastFileProvider);
+              return _SwitchTile(
+                title: 'Открывать последний файл при запуске',
+                subtitle: 'Вместо ленты новостей — сразу туда, где остановились',
+                value: enabled,
+                onChanged: (v) => ref.read(openLastFileProvider.notifier).set(v),
+                icon: Icons.restore,
+              );
+            },
+          ),
           const SizedBox(height: 24),
 
           // Notifications Section
@@ -349,6 +387,62 @@ class _FontSizeTile extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.add),
               onPressed: currentSize < 24 ? () => onChanged(currentSize + 2) : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _lineHeightLabel(double value) {
+  if (value <= 1.3) return 'Узкий';
+  if (value <= 1.7) return 'Обычный';
+  return 'Широкий';
+}
+
+/// Generic "cycle through a fixed list of values" tile — used for line
+/// height and margin, both of which are small discrete step lists rather
+/// than a free-form range.
+class _StepperTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final List<double> steps;
+  final double currentValue;
+  final ValueChanged<double> onChanged;
+
+  const _StepperTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.steps,
+    required this.currentValue,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final index = steps.indexWhere((s) => (s - currentValue).abs() < 0.01);
+    final safeIndex = index < 0 ? 0 : index;
+
+    return Card(
+      child: ListTile(
+        leading: Icon(icon),
+        title: Text(title),
+        subtitle: Text(subtitle),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.remove),
+              onPressed: safeIndex > 0 ? () => onChanged(steps[safeIndex - 1]) : null,
+            ),
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: safeIndex < steps.length - 1
+                  ? () => onChanged(steps[safeIndex + 1])
+                  : null,
             ),
           ],
         ),

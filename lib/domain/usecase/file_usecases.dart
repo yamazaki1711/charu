@@ -78,3 +78,25 @@ class SaveBookmarkUseCase {
     await _repository.addBookmark(filePath, position, note: note);
   }
 }
+
+/// Use case for listing a file's bookmarks (Bookmarks sheet in the reader).
+class GetBookmarksUseCase {
+  final IFileRepository _repository;
+
+  GetBookmarksUseCase(this._repository);
+
+  Future<List<BookmarkEntry>> call(String filePath) async {
+    return await _repository.getBookmarks(filePath);
+  }
+}
+
+/// Use case for deleting a single bookmark.
+class RemoveBookmarkUseCase {
+  final IFileRepository _repository;
+
+  RemoveBookmarkUseCase(this._repository);
+
+  Future<void> call(int id) async {
+    await _repository.removeBookmark(id);
+  }
+}
