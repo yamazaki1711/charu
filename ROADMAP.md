@@ -63,7 +63,7 @@
 - [ ] Навигация по главам (весь spine читается одним потоком, без оглавления в UI)
 
 ### Реальные новости
-- [x] RSS-источники вместо моков (chinanews.com.cn ×2 + people.com.cn; Baidu/Sina не подключены — RSS заменён на другие независимые источники, см. `news_api_service.dart`)
+- [x] RSS-источники вместо моков (chinanews.com.cn ×2 + people.com.cn, см. `news_api_service.dart`)
 - [x] HTML-фоллбек и облачные прокси (allorigins/codetabs) на случай недоступности прямого RSS
 - [ ] Offline-кэш (50 статей / 500 MB)
 - [ ] Автоудаление старых статей (7 дней)

@@ -2,7 +2,7 @@ import '../model/news_models.dart';
 
 /// Repository interface for fetching and reading news
 abstract class INewsRepository {
-  /// Fetches the latest news feed from Baidu / Sina / RSS
+  /// Fetches the latest news feed from the configured RSS sources
   Future<List<NewsArticle>> getLatestNews();
 
   /// Fetches the full text content of a specific article
