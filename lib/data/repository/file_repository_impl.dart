@@ -156,14 +156,19 @@ class FileRepositoryImpl implements IFileRepository {
     // Fewer than 10% high bytes → plain ASCII/Latin, not GBK.
     if (highBytes * 10 < sample.length) return false;
 
-    // Try strict UTF-8 decode; if it throws, the payload is not valid
-    // UTF-8, so GBK is a reasonable guess for Chinese text.
-    try {
-      utf8.decode(sample);
-      return false; // valid UTF-8 — keep UTF-8
-    } catch (_) {
-      return true; // invalid UTF-8 → likely GBK
-    }
+    // Decode leniently and count replacement characters rather than doing
+    // a strict decode: a hard byte-offset cut at exactly 8192 can land
+    // anywhere inside (or right before) a multi-byte UTF-8 sequence — not
+    // just mid-sequence, but also exactly on a lead byte with zero of its
+    // continuation bytes left in the sample — either way a strict decode
+    // throws on a perfectly valid UTF-8 file purely because of where the
+    // cut fell. That produces at most one spurious U+FFFD at the very tail
+    // of the sample. Genuinely GBK-encoded text decoded as UTF-8 produces
+    // replacement characters throughout the sample, not just at the edge.
+    final decoded = utf8.decode(sample, allowMalformed: true);
+    final replacementCount =
+        decoded.codeUnits.where((c) => c == 0xFFFD).length;
+    return replacementCount > 2;
   }
 
   /// Extracts plain text from an EPUB (OPF spine) archive.

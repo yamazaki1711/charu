@@ -5,6 +5,7 @@ class LibraryBook {
   final String wikisourceTitle;
   final String author;
   final String titleDisplay;
+  final String year;
   final String genre;
   final String level;
   final String? filePath;
@@ -16,6 +17,7 @@ class LibraryBook {
     required this.wikisourceTitle,
     required this.author,
     required this.titleDisplay,
+    required this.year,
     required this.genre,
     required this.level,
     this.filePath,
@@ -34,6 +36,7 @@ class LibraryBook {
       wikisourceTitle: json['wikisourceTitle'] as String,
       author: json['author'] as String,
       titleDisplay: json['titleDisplay'] as String,
+      year: json['year'] as String? ?? '',
       genre: json['genre'] as String? ?? '',
       level: json['level'] as String? ?? '',
     );
@@ -49,6 +52,7 @@ class LibraryBook {
       wikisourceTitle: wikisourceTitle,
       author: author,
       titleDisplay: titleDisplay,
+      year: year,
       genre: genre,
       level: level,
       filePath: filePath,
