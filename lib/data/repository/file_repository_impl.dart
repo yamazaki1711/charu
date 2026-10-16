@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data' show Uint8List;
 
 import 'package:archive/archive.dart';
+import 'package:charset_converter/charset_converter.dart';
 import 'package:fast_gbk/fast_gbk.dart' as gbk;
 import 'package:file_picker/file_picker.dart' as fp;
 import '../../core/log.dart';
@@ -102,8 +104,8 @@ class FileRepositoryImpl implements IFileRepository {
         return content;
       }
 
-      // Detect encoding: UTF-8 BOM → GBK → UTF-8 (with malformed check)
-      final content = _decodeBytes(bytes);
+      // Detect encoding: UTF-8 BOM → GBK/Big5 → UTF-8 (with malformed check)
+      final content = await _decodeBytes(bytes);
 
       // Update last opened
       await _updateLastOpened(filePath);
@@ -115,13 +117,14 @@ class FileRepositoryImpl implements IFileRepository {
     }
   }
 
-  /// Decodes [bytes] trying UTF-8 BOM, GBK/GB2312, then plain UTF-8.
-  ///
-  /// Heuristic: UTF-8 decodes cleanly if it contains no replacement
-  /// characters; Chinese text encoded as GBK almost always decodes to
-  /// replacement characters under UTF-8, so GBK is tried first when the
-  /// payload is mostly non-ASCII high bytes.
-  String _decodeBytes(List<int> bytes) {
+  /// Decodes [bytes] trying UTF-8 BOM, then (for non-UTF-8 payloads) the
+  /// best-scoring candidate among GBK and Big5 — the two DBCS encodings a
+  /// Chinese-text reader actually encounters in the wild (GBK/GB2312 from
+  /// mainland sources, Big5 from older Taiwan/Hong Kong texts). Shift_JIS/
+  /// EUC-JP (Japanese) are deliberately out of scope: this app reads
+  /// Chinese, not Japanese, so guessing between two Chinese DBCS encodings
+  /// covers what students will actually open.
+  Future<String> _decodeBytes(List<int> bytes) async {
     // UTF-8 BOM
     if (bytes.length >= 3 &&
         bytes[0] == 0xEF &&
@@ -130,17 +133,66 @@ class FileRepositoryImpl implements IFileRepository {
       return utf8.decode(bytes.sublist(3), allowMalformed: true);
     }
 
-    // Heuristic: if the first 4KB contain lots of high (>= 0x80) bytes
-    // that are not valid UTF-8 sequences, it is very likely GBK.
+    // Heuristic: if the first 8KB contain lots of high (>= 0x80) bytes
+    // that are not valid UTF-8 sequences, it is very likely a Chinese DBCS
+    // encoding rather than UTF-8 — otherwise keep UTF-8, no guessing needed.
     if (_looksLikeGbk(bytes)) {
+      String? gbkResult;
+      String? big5Result;
       try {
-        return gbk.gbk.decode(bytes, allowMalformed: true);
+        gbkResult = gbk.gbk.decode(bytes, allowMalformed: true);
       } catch (e) {
-        log('⚠️ GBK decode failed, falling back to UTF-8: $e');
+        log('⚠️ GBK decode failed: $e');
+      }
+      try {
+        big5Result = await CharsetConverter.decode(
+          'Big5',
+          Uint8List.fromList(bytes),
+        );
+      } catch (e) {
+        log('⚠️ Big5 decode failed/unavailable: $e');
+      }
+
+      // Score each candidate by the fraction of CJK-ideograph + common
+      // Chinese punctuation characters it produced — a wrong-encoding
+      // guess decodes mostly into unrelated CJK Extension/Hangul/noise
+      // characters instead of plausible running Chinese text.
+      final gbkScore = gbkResult == null ? -1.0 : _chineseTextScore(gbkResult);
+      final big5Score =
+          big5Result == null ? -1.0 : _chineseTextScore(big5Result);
+
+      if (gbkScore < 0 && big5Score < 0) {
+        log('⚠️ Both GBK and Big5 decode failed, falling back to UTF-8');
+      } else if (big5Score > gbkScore) {
+        log('[Charset] Detected Big5 (score $big5Score vs GBK $gbkScore)');
+        return big5Result!;
+      } else {
+        return gbkResult!;
       }
     }
 
     return utf8.decode(bytes, allowMalformed: true);
+  }
+
+  /// Fraction of [text] that is a CJK unified ideograph or common Chinese
+  /// punctuation — a cheap "does this look like real Chinese" score used
+  /// to pick between competing encoding guesses (see [_decodeBytes]).
+  double _chineseTextScore(String text) {
+    if (text.isEmpty) return 0.0;
+    final sample = text.length > 4096 ? text.substring(0, 4096) : text;
+    int plausible = 0;
+    for (final rune in sample.runes) {
+      if ((rune >= 0x4E00 && rune <= 0x9FFF) ||
+          (rune >= 0x3400 && rune <= 0x4DBF) ||
+          (rune >= 0x3000 && rune <= 0x303F) || // CJK punctuation
+          (rune >= 0xFF00 && rune <= 0xFFEF) || // fullwidth forms
+          rune == 0x20 ||
+          rune == 0x0A ||
+          rune == 0x0D) {
+        plausible++;
+      }
+    }
+    return plausible / sample.runes.length;
   }
 
   /// Returns true if [bytes] looks like GBK-encoded text:
@@ -322,7 +374,7 @@ class FileRepositoryImpl implements IFileRepository {
         if (filePath.toLowerCase().endsWith('.epub')) {
           content = _extractEpubText(bytes);
         } else {
-          content = _decodeBytes(bytes);
+          content = await _decodeBytes(bytes);
         }
       } catch (_) {
         // Fallback: no progress info if the file cannot be decoded

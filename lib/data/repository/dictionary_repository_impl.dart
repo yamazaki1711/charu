@@ -19,7 +19,7 @@ class DictionaryRepositoryImpl implements IDictionaryRepository {
         _onlineService = onlineService ?? OnlineDictionaryService();
 
   @override
-  Future<DictionaryResult> lookupWord(String word) async {
+  Future<DictionaryResult> lookupWord(String word, {String? windowContext}) async {
     log('[Dict] ═══ Looking up: "$word" ═══');
 
     // On Web, use in-memory dictionary
@@ -62,6 +62,36 @@ class DictionaryRepositoryImpl implements IDictionaryRepository {
       log('[Dict] ❌ Not found in local BKRS');
     } catch (e) {
       log('[Dict] ⚠️ Local BKRS error: $e');
+    }
+
+    // ------------------------------------------------------------------
+    // STEP 1.5: Window-scan (Offline) — segmentation-independent
+    // ------------------------------------------------------------------
+    // jieba's word boundary is a guess; when it's wrong (merges/splits
+    // characters differently than how BKRS actually lists the entry), the
+    // exact-word lookup above misses an entry that genuinely exists. Scan
+    // forward from the tap through the raw surrounding text — not jieba's
+    // opinion of where the word ends — for the longest substring BKRS
+    // actually has (same approach as Nichiro's rikai window-scan, adapted
+    // from a fixed character window to "whatever's left of the paragraph").
+    if (windowContext != null && windowContext.length > word.length) {
+      try {
+        log('[Dict] Step 1.5: Window-scan ("${windowContext.substring(0, windowContext.length.clamp(0, 16))}"...)...');
+        final scanned = await _windowScanMatch(windowContext);
+        if (scanned != null && scanned.simplified.length > word.length) {
+          log('[Dict] ✅ Window-scan found longer match: "${scanned.simplified}" (vs tapped "$word")');
+          return DictionaryResult(
+            chineseWord: scanned.simplified,
+            pinyin: scanned.pinyin,
+            translation: scanned.translation,
+            source: 'bkrs',
+            icon: '🔎',
+          );
+        }
+        log('[Dict] ❌ Window-scan found nothing longer than the tapped word');
+      } catch (e) {
+        log('[Dict] ⚠️ Window-scan error: $e');
+      }
     }
 
     // ------------------------------------------------------------------
@@ -191,6 +221,18 @@ class DictionaryRepositoryImpl implements IDictionaryRepository {
       source: 'fallback',
       icon: offline ? '📡' : '❓',
     );
+  }
+
+  /// Longest-match scan over [window] (tapped word + raw surrounding
+  /// text): tries substrings from longest to shortest (capped at 16 chars
+  /// — matches Nichiro's rikai window size) and returns the first BKRS hit.
+  Future<WordEntry?> _windowScanMatch(String window) async {
+    final maxLen = window.length.clamp(0, 16);
+    for (int len = maxLen; len >= 1; len--) {
+      final entry = await searchLocalBkrs(window.substring(0, len));
+      if (entry != null) return entry;
+    }
+    return null;
   }
 
   /// Greedy left-to-right decomposition: tries the longest possible

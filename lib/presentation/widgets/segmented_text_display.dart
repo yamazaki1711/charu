@@ -155,8 +155,13 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
     _flashTimer = Timer(const Duration(milliseconds: 1200), () {
       if (mounted) setState(() => _flashedIndex = null);
     });
+    // Window-scan context: the raw remaining text from the tap forward,
+    // independent of how jieba split it into segments — lets the
+    // repository recover from a wrong segmentation boundary (see
+    // DictionaryRepositoryImpl's Step 1.5).
+    final window = _segments.sublist(index).join();
     final useCase = ref.read(lookupWordUseCaseProvider);
-    final result = await useCase.call(word);
+    final result = await useCase.call(word, windowContext: window);
     if (!mounted) return;
     DictionaryPopup.show(context, result);
   }

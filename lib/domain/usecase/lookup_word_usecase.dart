@@ -10,10 +10,13 @@ class LookupWordUseCase {
 
   LookupWordUseCase(this._repository);
 
-  /// Executes the 5-layer dictionary lookup cascade.
+  /// Executes the dictionary lookup cascade.
   ///
-  /// The [word] input should be properly segmented by Jieba prior to calling this.
-  Future<DictionaryResult> call(String word) async {
+  /// The [word] input should be properly segmented by Jieba prior to
+  /// calling this. [windowContext] (word + surrounding raw text) enables
+  /// the window-scan fallback when the segmented [word] itself has no
+  /// entry — see [IDictionaryRepository.lookupWord].
+  Future<DictionaryResult> call(String word, {String? windowContext}) async {
     if (word.trim().isEmpty) {
       return DictionaryResult(
         chineseWord: word,
@@ -23,6 +26,6 @@ class LookupWordUseCase {
       );
     }
 
-    return await _repository.lookupWord(word);
+    return await _repository.lookupWord(word, windowContext: windowContext);
   }
 }
