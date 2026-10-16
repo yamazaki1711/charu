@@ -149,13 +149,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           _InfoTile(
             title: 'Топонимы',
-            subtitle: 'Демо-набор (расширение в планах)',
-            trailing: const Icon(Icons.hourglass_bottom, color: Colors.orange),
+            subtitle: '548 городов с переводом',
+            trailing: const Icon(Icons.check_circle, color: Colors.green),
           ),
           _InfoTile(
             title: 'Личные имена',
-            subtitle: 'Демо-набор (расширение в планах)',
-            trailing: const Icon(Icons.hourglass_bottom, color: Colors.orange),
+            subtitle: '58 950 фамилий и имён',
+            trailing: const Icon(Icons.check_circle, color: Colors.green),
           ),
           const SizedBox(height: 24),
 

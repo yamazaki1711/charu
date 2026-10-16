@@ -3,6 +3,12 @@ import 'dart:convert';
 import 'package:path/path.dart';
 import 'package:sqlite3/sqlite3.dart';
 
+// ВАЖНО: этот скрипт создаёт toponyms/person_names ПУСТЫМИ (см. ниже).
+// После пересборки dictionary обязательно прогнать
+// scripts/data_sources/extract_toponyms_names_from_bkrs_dsl.py на том же
+// исходном dabkrs-дампе и загрузить его TSV-вывод в эти таблицы — иначе
+// 5-уровневый каскад словаря откатится к демо-заглушкам (8/10 записей).
+
 void main() async {
   print('🚀 Парсинг DSL словаря (стриминг)...');
 
