@@ -6,53 +6,52 @@ import 'package:go_router/go_router.dart';
 /// On wide screens (≥ 840dp) — [NavigationRail] on the left.
 /// On narrow screens — bottom [NavigationBar] (unchanged from before).
 class AppShell extends StatelessWidget {
-  const AppShell({super.key, required this.child});
+  const AppShell({super.key, required this.navigationShell});
 
-  final Widget child;
+  /// Drives the [StatefulShellRoute] — each branch keeps its own
+  /// Navigator stack alive, so switching tabs doesn't lose where you
+  /// were (e.g. a book open in Files survives a trip to Settings).
+  final StatefulNavigationShell navigationShell;
 
   static const _tabs = [
     (
       icon: Icons.article_outlined,
       activeIcon: Icons.article,
       label: 'Новости',
-      path: '/news',
     ),
     (
       icon: Icons.folder_outlined,
       activeIcon: Icons.folder,
       label: 'Файлы',
-      path: '/files',
     ),
     (
       icon: Icons.bar_chart_outlined,
       activeIcon: Icons.bar_chart,
       label: 'Прогресс',
-      path: '/progress',
     ),
     (
       icon: Icons.settings_outlined,
       activeIcon: Icons.settings,
       label: 'Настройки',
-      path: '/settings',
     ),
   ];
 
   /// Breakpoint for switching between NavigationRail and NavigationBar.
   static const double _wideBreakpoint = 840.0;
 
-  int _currentIndex(BuildContext context) {
-    final location = GoRouterState.of(context).uri.path;
-    for (var i = 0; i < _tabs.length; i++) {
-      if (location.startsWith(_tabs[i].path)) return i;
-    }
-    return 0;
+  void _navigate(int index) {
+    // Re-tapping the already-active tab resets its branch to the root
+    // route (standard "tap home icon to go home" behaviour); switching
+    // to a different tab preserves that branch's existing stack.
+    navigationShell.goBranch(
+      index,
+      initialLocation: index == navigationShell.currentIndex,
+    );
   }
-
-  void _navigate(BuildContext context, int i) => context.go(_tabs[i].path);
 
   @override
   Widget build(BuildContext context) {
-    final index = _currentIndex(context);
+    final index = navigationShell.currentIndex;
     final isWide = MediaQuery.sizeOf(context).width >= _wideBreakpoint;
 
     if (isWide) {
@@ -61,7 +60,7 @@ class AppShell extends StatelessWidget {
           children: [
             NavigationRail(
               selectedIndex: index,
-              onDestinationSelected: (i) => _navigate(context, i),
+              onDestinationSelected: _navigate,
               labelType: NavigationRailLabelType.all,
               leading: const Padding(
                 padding: EdgeInsets.only(top: 16, bottom: 8),
@@ -78,7 +77,7 @@ class AppShell extends StatelessWidget {
                   .toList(),
             ),
             const VerticalDivider(width: 1),
-            Expanded(child: child),
+            Expanded(child: navigationShell),
           ],
         ),
       );
@@ -86,10 +85,10 @@ class AppShell extends StatelessWidget {
 
     // Narrow screen: bottom NavigationBar (unchanged).
     return Scaffold(
-      body: child,
+      body: navigationShell,
       bottomNavigationBar: NavigationBar(
         selectedIndex: index,
-        onDestinationSelected: (i) => _navigate(context, i),
+        onDestinationSelected: _navigate,
         destinations: _tabs
             .map(
               (t) => NavigationDestination(
