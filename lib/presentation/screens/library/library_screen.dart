@@ -29,9 +29,63 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         centerTitle: true,
       ),
       body: catalogAsync.when(
-        data: (books) => _buildList(books, theme),
+        data: (books) => Column(
+          children: [
+            _buildIntro(theme),
+            Expanded(child: _buildList(books, theme)),
+          ],
+        ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => Center(child: Text('Ошибка: $error')),
+      ),
+    );
+  }
+
+  /// Explains what this screen is (a small hand-picked set, not a general
+  /// catalog you can search) and points to the actual way to add your own
+  /// reading material — a real gap users hit: the obvious first question
+  /// on an empty-ish list screen is "how do I add a book?", and nothing
+  /// here answered it before.
+  Widget _buildIntro(ThemeData theme) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.auto_stories_outlined,
+                  size: 20, color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Бесплатные тексты с Wikisource — подборка редакции, '
+                  'список будет пополняться. Это не весь Wikisource и не поиск.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _openOwnFile,
+              icon: const Icon(Icons.folder_open, size: 18),
+              label: const Text('Открыть свой файл (TXT, HTML, EPUB)'),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -52,6 +106,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         );
       },
     );
+  }
+
+  Future<void> _openOwnFile() async {
+    final openFile = ref.read(openFileUseCaseProvider);
+    final file = await openFile();
+    if (file != null && mounted) {
+      context.push('/files/reader', extra: {'path': file.path, 'name': file.name});
+    }
   }
 
   Future<void> _download(LibraryBook book) async {
