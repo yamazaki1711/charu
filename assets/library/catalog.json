@@ -1,0 +1,59 @@
+{
+  "_comment": "Кураторский каталог для MVP (0.2.0) — канон современной китайской литературы (鲁迅/老舍/朱自清/徐志摩), аналог «каждый образованный человек это знает». wikisourceTitle проверены напрямую через MediaWiki API (2026-10-16): реальные страницы текста, не редиректы/неоднозначности/сборники-оглавления.",
+  "books": [
+    {
+      "id": "xu-zhimo-ouran",
+      "wikisourceTitle": "偶然",
+      "author": "徐志摩 (Сюй Чжимо)",
+      "titleDisplay": "偶然 — Случайность",
+      "year": "1926",
+      "genre": "стихотворение",
+      "level": "начальный"
+    },
+    {
+      "id": "lu-xun-guxiang",
+      "wikisourceTitle": "故鄉",
+      "author": "鲁迅 (Лу Синь)",
+      "titleDisplay": "故乡 — Родная деревня",
+      "year": "1921",
+      "genre": "рассказ",
+      "level": "средний"
+    },
+    {
+      "id": "lu-xun-kongyiji",
+      "wikisourceTitle": "孔乙己",
+      "author": "鲁迅 (Лу Синь)",
+      "titleDisplay": "孔乙己 — Кун Ицзи",
+      "year": "1919",
+      "genre": "рассказ",
+      "level": "средний"
+    },
+    {
+      "id": "zhu-ziqing-beiying",
+      "wikisourceTitle": "背影",
+      "author": "朱自清 (Чжу Цзыцин)",
+      "titleDisplay": "背影 — Силуэт спины",
+      "year": "1925",
+      "genre": "эссе",
+      "level": "начальный-средний"
+    },
+    {
+      "id": "zhu-ziqing-hetang",
+      "wikisourceTitle": "荷塘月色",
+      "author": "朱自清 (Чжу Цзыцин)",
+      "titleDisplay": "荷塘月色 — Лунный свет над лотосовым прудом",
+      "year": "1927",
+      "genre": "эссе",
+      "level": "средний"
+    },
+    {
+      "id": "lao-she-rebaozi",
+      "wikisourceTitle": "熱包子",
+      "author": "老舍 (Лао Шэ)",
+      "titleDisplay": "热包子 — Горячие пирожки",
+      "year": "1933",
+      "genre": "рассказ (сатира)",
+      "level": "средний"
+    }
+  ]
+}

@@ -41,6 +41,10 @@ dependencies:
   fast_gbk: ^1.0.0
   pinyin: ^3.3.0
 
+  # Library (Wikisource books): storage path + traditional->simplified
+  path_provider: ^2.1.5
+  flutter_open_chinese_convert: ^1.0.0
+
   # Notifications
   flutter_local_notifications: ^19.4.2
   timezone: ^0.10.0
@@ -62,6 +66,7 @@ flutter:
     - assets/
     - assets/db/
     - assets/icons/
+    - assets/library/
     - assets/dict.txt
     - assets/prob_emit.txt
     - assets/dict.big.txt

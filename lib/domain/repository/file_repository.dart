@@ -31,4 +31,9 @@ abstract class IFileRepository {
 
   /// Deletes a single bookmark by its id.
   Future<void> removeBookmark(int id);
+
+  /// Registers [file] in reading history without going through [pickFile]
+  /// (used by the Library to plug a downloaded book into the existing
+  /// reader/progress/bookmarks pipeline as if it were a locally opened file).
+  Future<void> addToHistory(LocalFile file);
 }

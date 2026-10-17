@@ -99,6 +99,34 @@ class PinyinTapOnlyNotifier extends StateNotifier<bool> {
   }
 }
 
+// ─── Library: keep traditional characters ───────────────────────────────────
+
+/// When ON, books downloaded from Wikisource (traditional-only source) are
+/// saved as-is instead of being converted to simplified characters via
+/// OpenCC. Off by default — most learners in this app's audience read
+/// simplified.
+final libraryKeepTraditionalProvider =
+    StateNotifierProvider<LibraryKeepTraditionalNotifier, bool>((ref) {
+  return LibraryKeepTraditionalNotifier();
+});
+
+class LibraryKeepTraditionalNotifier extends StateNotifier<bool> {
+  LibraryKeepTraditionalNotifier() : super(false) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getBool('library_keep_traditional') ?? false;
+  }
+
+  Future<void> set(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('library_keep_traditional', value);
+    state = value;
+  }
+}
+
 // ─── Reader font size ────────────────────────────────────────────────────────
 
 /// Provider for the reader font size setting (default: 18, range 14–24).

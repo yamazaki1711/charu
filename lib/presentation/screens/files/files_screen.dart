@@ -231,7 +231,8 @@ class _FileCard extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.more_vert, size: 20),
+                  icon: const Icon(Icons.delete_outline, size: 20),
+                  tooltip: 'Удалить из истории',
                   onPressed: onRemove,
                   color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                 ),
