@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../data/repository/news_sources_repository.dart';
@@ -218,12 +219,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
           // About Section
           _SectionTitle(title: 'О приложении'),
-          _InfoTile(
-            title: 'Версия',
-            // Держать в синхроне с pubspec.yaml вручную — package_info_plus
-            // не подключён, чтобы не тянуть лишнюю зависимость ради одной строки.
-            subtitle: '0.1.1',
-          ),
+          const _VersionTile(),
           _InfoTile(
             title: 'Kira',
             subtitle: 'Читатель китайских текстов с интегрированным словарём',
@@ -533,18 +529,34 @@ class _TimePickerTile extends StatelessWidget {
   }
 }
 
-class _NewsSourcesList extends ConsumerWidget {
+class _NewsSourcesList extends ConsumerStatefulWidget {
   const _NewsSourcesList();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_NewsSourcesList> createState() => _NewsSourcesListState();
+}
+
+class _NewsSourcesListState extends ConsumerState<_NewsSourcesList> {
+  @override
+  void initState() {
+    super.initState();
+    // Load exactly once per mount — this used to run from build() via
+    // addPostFrameCallback with no guard, so it fired on every single
+    // rebuild: notifier.load() always returns a *new* List instance from
+    // the DB query, which Riverpod treats as a state change even when the
+    // contents are identical, which triggers another rebuild of this
+    // watcher, which schedules another load()... an unthrottled rebuild
+    // loop from the very first frame (ListView — not ListView.builder —
+    // builds every child eagerly, so this wasn't even scroll-gated). It
+    // pegged the UI isolate badly enough to make the whole Settings
+    // screen's scroll gesture appear frozen, not just this section.
+    ref.read(newsSourcesProvider.notifier).load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final sources = ref.watch(newsSourcesProvider);
     final notifier = ref.read(newsSourcesProvider.notifier);
-
-    // Ensure sources are loaded on first build.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      notifier.load();
-    });
 
     if (sources.isEmpty) {
       return const Card(
@@ -607,6 +619,28 @@ class _SourceAvatar extends StatelessWidget {
         initial,
         style: const TextStyle(fontWeight: FontWeight.bold),
       ),
+    );
+  }
+}
+
+/// Reads the real version from the build (pubspec.yaml → Android/iOS
+/// package metadata) instead of a hand-maintained string — a previous
+/// hardcoded '0.1.1' silently went stale across a whole 0.2.0 feature
+/// cycle (Library + reader/dictionary overhaul) before anyone noticed.
+class _VersionTile extends StatelessWidget {
+  const _VersionTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PackageInfo>(
+      future: PackageInfo.fromPlatform(),
+      builder: (context, snapshot) {
+        final info = snapshot.data;
+        final subtitle = info == null
+            ? '…'
+            : '${info.version} (сборка ${info.buildNumber})';
+        return _InfoTile(title: 'Версия', subtitle: subtitle);
+      },
     );
   }
 }
