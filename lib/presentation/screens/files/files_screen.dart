@@ -121,6 +121,50 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: () => context.go('/library'),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.menu_book_outlined,
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Или выбрать готовую книгу',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          Text(
+                            'Бесплатные тексты с Wikisource — вкладка «Библиотека»',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right,
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.4)),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),

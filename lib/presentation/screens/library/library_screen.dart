@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart' show TapGestureRecognizer;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -42,10 +43,15 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   }
 
   /// Explains what this screen is (a small hand-picked set, not a general
-  /// catalog you can search) and points to the actual way to add your own
-  /// reading material — a real gap users hit: the obvious first question
-  /// on an empty-ish list screen is "how do I add a book?", and nothing
-  /// here answered it before.
+  /// catalog you can search) and, for anyone looking to read their own
+  /// text, points at — rather than duplicates — the one place that does
+  /// that: the Files tab. An earlier version put a full "open file" button
+  /// here too, which just relocated the original confusion ("how do I add
+  /// a book?") into a new one ("why are there two identical buttons in two
+  /// different tabs?"). The actual fix is keeping that action in exactly
+  /// one place: Library is for discovering new things to download, Files
+  /// is everything you can currently read (your own files AND whatever
+  /// you've downloaded from here — they land in the same list).
   Widget _buildIntro(ThemeData theme) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -54,35 +60,36 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.auto_stories_outlined,
-                  size: 20, color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Бесплатные тексты с Wikisource — подборка редакции, '
-                  'список будет пополняться. Это не весь Wikisource и не поиск.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
-                    height: 1.4,
-                  ),
+          Icon(Icons.auto_stories_outlined,
+              size: 20, color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: TextStyle(
+                  fontSize: 13,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                  height: 1.4,
                 ),
+                children: [
+                  const TextSpan(
+                    text: 'Бесплатные тексты с Wikisource — подборка редакции, '
+                        'список будет пополняться. Это не весь Wikisource и не поиск. ',
+                  ),
+                  TextSpan(
+                    text: 'Хотите читать свой текст?',
+                    style: TextStyle(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () => context.go('/files'),
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _openOwnFile,
-              icon: const Icon(Icons.folder_open, size: 18),
-              label: const Text('Открыть свой файл (TXT, HTML, EPUB)'),
             ),
           ),
         ],
@@ -108,13 +115,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     );
   }
 
-  Future<void> _openOwnFile() async {
-    final openFile = ref.read(openFileUseCaseProvider);
-    final file = await openFile();
-    if (file != null && mounted) {
-      context.push('/files/reader', extra: {'path': file.path, 'name': file.name});
-    }
-  }
 
   Future<void> _download(LibraryBook book) async {
     setState(() => _downloadingIds.add(book.id));
