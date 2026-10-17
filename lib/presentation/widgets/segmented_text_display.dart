@@ -116,6 +116,11 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
   int? _flashedIndex;
   Timer? _flashTimer;
 
+  /// Tap-only-pinyin mode: index of the word currently showing its inline
+  /// pinyin (progressive disclosure — see [_onWordTapped]). Null when
+  /// nothing is revealed or the mode is off.
+  int? _revealedIndex;
+
   @override
   void initState() {
     super.initState();
@@ -139,6 +144,7 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
   void _segmentText() {
     setState(() {
       _segments = segmentChinese(widget.text);
+      _revealedIndex = null;
       // Pre-fetch pinyin for all Chinese segments (cached).
       for (final word in _segments) {
         if (_containsChinese(word) && !_pinyinCache.containsKey(word)) {
@@ -148,6 +154,19 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
     });
   }
 
+  /// Tap-only-pinyin mode uses progressive disclosure instead of opening
+  /// the dictionary on every tap: a first tap just reveals that word's
+  /// pinyin in place (quiet, reversible, no modal); tapping the SAME
+  /// still-revealed word again opens the dictionary. This replaced an
+  /// earlier version where tap-only mode suppressed inline pinyin
+  /// entirely and every tap opened the dictionary regardless — the
+  /// setting's own name promised a lighter "just the pinyin" interaction
+  /// that didn't actually exist. Two plain taps (not a double-tap gesture,
+  /// which is considered unreliable/obsolete in current mobile UX
+  /// guidance, and not a long-press, which is poorly discoverable) keeps
+  /// a single consistent gesture that scales from "light peek" to "full
+  /// lookup" — the same progressive-disclosure pattern dictionary popups
+  /// themselves use for definitions vs. examples.
   void _onWordTapped(String word, int index) async {
     log('[Tap] Word tapped: "$word"');
     _flashTimer?.cancel();
@@ -155,6 +174,19 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
     _flashTimer = Timer(const Duration(milliseconds: 1200), () {
       if (mounted) setState(() => _flashedIndex = null);
     });
+
+    final tapOnly = ref.read(pinyinTapOnlyProvider);
+    final pinyinOn = ref.read(showPinyinProvider);
+    if (pinyinOn && tapOnly) {
+      if (_revealedIndex != index) {
+        // First tap on this word: reveal its pinyin, stop here.
+        setState(() => _revealedIndex = index);
+        return;
+      }
+      // Second tap on the already-revealed word: proceed to the dictionary.
+      setState(() => _revealedIndex = null);
+    }
+
     // Window-scan context: the raw remaining text from the tap forward,
     // independent of how jieba split it into segments — lets the
     // repository recover from a wrong segmentation boundary (see
@@ -221,11 +253,10 @@ class _SegmentedTextDisplayState extends ConsumerState<SegmentedTextDisplay> {
               decorationStyle: TextDecorationStyle.dotted,
             );
 
-      // "Tap-only" mode intentionally does NOT reveal pinyin inline — see
-      // module doc for why. The dictionary popup (opened by every tap,
-      // _onWordTapped) already shows the pinyin prominently, so tap-only
-      // mode simply keeps the inline text clean and relies on that popup.
-      final showPinyinForWord = showPinyin && !tapOnlyPinyin;
+      // Ambient mode: every word shows pinyin. Tap-only mode: only the
+      // currently-revealed word does (see _onWordTapped).
+      final showPinyinForWord =
+          showPinyin && (!tapOnlyPinyin || _revealedIndex == index);
       final pinyin = showPinyinForWord
           ? (_pinyinCache[word] ?? PinyinHelper.getPinyin(word))
           : '';
